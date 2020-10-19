@@ -11,3 +11,4 @@ the system switches to AP mode, and connecting to that AP shows a web page that 
 configure the system. In this way, an end-user can install and configure the device using a cell
 phone or other net enabled computer without technical expertise.
 
+
