@@ -1,0 +1,87 @@
+<!DOCTYPE html><html style="cursor: default;">
+
+<head manifest=NoCache.appcache>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="HandheldFriendly"   content="true" />
+  <title>Configure</title>
+  <link   type="text/css"        href="Config.css" rel="stylesheet">
+  <script type="text/javascript"  src="Config.js"></script>
+  <script type="text/javascript">
+    function PageInit() {}
+    </script>
+    </head>
+
+<body>
+
+<div id="TOCPage" style="display: block;" class="PageDiv">
+    <h1>Configure system: <span class="SysName"></span></h1>
+    <table id="TOCTable">
+        <tr><td><button class="NavButton" onclick=GotoPage('ScanningPage') >Wifi settings</button></td></tr>
+        <tr><td><button class="NavButton" onclick=GotoPage('NamePage')     >System name</button></td></tr>
+        <tr><td><button class="NavButton" onclick=GotoPage('SharingPage')  >File sharing</button></td></tr>
+        <tr><td><button class="NavButton" onclick=GotoPage('RebootPage')   >Reboot</button></td></tr>
+        </table>
+    </div>
+
+<div id="NamePage" style="display: none;" class="PageDiv">
+    <h1>System name is: <span class="SysName"></span></h1>
+    <h1>Enter new name:</h1>
+    <h3>&nbsp;</h3>
+    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
+    </div>
+
+<div id="SharingPage" style="display: none;" class="PageDiv">
+    <h1>File sharing:</h1>
+    <h3>&nbsp;</h3>
+    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
+    </div>
+
+
+<div id="ScanningPage" style="display: none;" class="PageDiv">
+    <h1>Scanning for wifi...</h1>
+    </div>
+
+<div id="SSIDPage" style="display: none;" class="PageDiv">
+
+    <h1>Which Wifi would you
+    like 
+    to use?</h1>
+
+     <center><table id="WifiNames"></table>
+            </center>
+    <h3>&nbsp;</h3>
+    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
+    </div>
+
+<div id="PasswordPage" style="display: none;" class="PageDiv">
+    <h1>Enter password for Wifi: <span id="EnterWifi" class="WifiText"></span></h1>
+    <center>
+        <input  id="Password" name="password" required>
+        <button class="SSIDButton" onclick=GotoPage('RebootPage') >Connect</button>
+        <button class="SSIDButton" onclick=GotoPage('TOCPage')    >Go Back</button>
+        </center>
+    </div>
+
+<div id="RebootPage" style="display: none;" class="PageDiv">
+    <center>
+    <h2><span class="SysName"></span> will connect to:</h2>
+    <h3 id="WifiSSID"     class="WifiText"></h2>
+    <h2 id="UsingPassword"                  >using password:</h2>
+    <h2 id="UsingNoPassword"                >using no password</h2>
+    <h3 id="WifiPassword" class="WifiText"></h2>
+    <h3> </h3>
+    <h3>These changes will take effect at next reboot</h3>
+    <h3> </h3>
+    <button class="NavButton" onclick=GotoPage('EpiloguePage')  >Reboot now</button>
+    <h3>&nbsp;</h3>
+    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
+    </center>
+    </div>
+
+<div id="EpiloguePage" style="display: none;" class="PageDiv">
+    <center><h2><span class="plogo"><span class="plp">p</span><span class="pli">I</span><span class="plv">V</span><span class="plo">O</span><span class="plt">T</span></span>
+    has returned to Wifi mode.</h2></center>
+    </div>
+
+    </body>
+</html>

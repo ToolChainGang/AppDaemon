@@ -1,0 +1,242 @@
+#!/usr/bin/perl
+#
+########################################################################################################################
+########################################################################################################################
+##
+##      Copyright (C) 2010 Rajstennaj Barrabas, Milford, NH 03055
+##      All Rights Reserved under the MIT license as outlined below.
+##
+##  FILE
+##
+##      ConfigServer
+##
+##  DESCRIPTION
+##
+##      RasPi configuration server
+##
+##      Accept commands from a web socket and perform that function.
+##
+##  USAGE
+##
+##      ConfigServer [-v]
+##
+##      where:      -v      Verbose: print out things as they happen
+##
+########################################################################################################################
+########################################################################################################################
+##
+##  MIT LICENSE
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy of
+##    this software and associated documentation files (the "Software"), to deal in
+##    the Software without restriction, including without limitation the rights to
+##    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+##    of the Software, and to permit persons to whom the Software is furnished to do
+##    so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in
+##    all copies or substantial portions of the Software.
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+##    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+##    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+##    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+##    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+##    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+########################################################################################################################
+########################################################################################################################
+
+use strict;
+use warnings;
+use Carp;
+
+our $VERSION = 'AppDaemon2020-10-20';
+
+use JSON;
+use File::Slurp qw(write_file);
+use Socket;
+
+use lib "/root/AppDaemon/lib";
+
+use Site::IWList;
+use Site::Process;
+use Site::WSServer;
+
+########################################################################################################################
+########################################################################################################################
+##
+## Data declarations
+##
+########################################################################################################################
+########################################################################################################################
+
+our $SERVER_PORT = 2021;
+
+our $Server;
+
+########################################################################################################################
+########################################################################################################################
+##
+## Config server
+##
+########################################################################################################################
+########################################################################################################################
+
+#
+# Process command line args.
+#
+#     -v (verbose) means "print out extra stuff"
+#
+my $Verbose = 0;
+
+$Verbose = 1
+    if defined $ARGV[0] and $ARGV[0] eq "-v";
+
+########################################################################################################################
+########################################################################################################################
+#
+# Setup a web socket and listen for connections.
+#
+Message("ConfigServer is up and running.")
+    if $Verbose;
+
+Message("Waiting for websocket connection")
+    if $Verbose;
+
+Site::WSServer::InitWSServer($SERVER_PORT,[],\&WebRequest,\&ConnectionRequest)->start;
+
+exit(1);
+
+########################################################################################################################
+########################################################################################################################
+##
+## ConnectionRequest - Process incoming connection requests
+##
+## Inputs:      Connection
+##              Server
+##
+## Outputs:     TRUE  if should accept this request
+##              FALSE if should reject this request
+##
+sub ConnectionRequest {
+
+    kill "USR1",getppid         # Inform server of activity
+        unless $DB::single;     #   (but not if debugging)
+
+    return 1;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## WebRequest - Process incoming web page requests
+##
+## Inputs:      JSON encoded struct of request
+##              Connection
+##              Server
+##
+## Outputs:     None
+##
+sub WebRequest {
+    my $JSONText = shift // "";
+    my $Conn     = shift;
+    my $Server   = shift;
+    
+    kill "USR1",getppid         # Inform server of activity
+        unless $DB::single;     #   (but not if debugging)
+
+    #
+    # Lots of error checking for web requests.
+    #
+    return Message("ConfigServer: No Web request")
+        unless length $JSONText;
+
+    my $Request = eval{decode_json $JSONText};              # Catches/avoids Croak() in lib function
+
+    return Message("ConfigServer: Bad JSON Web request: ($JSONText)")
+        unless defined $Request && (ref $Request) eq "HASH";
+
+    $Request->{Type} //= "";
+        
+    return Message("WebRequest: No request type: ($JSONText)")
+        unless length $Request->{Type};
+
+    #
+    # GetName - Return the system name
+    #
+    if( $Request->{Type} eq "GetName" ) {
+        $Request->{Error} = "No error.";
+        $Request->{State} = `cat /etc/hostname | tr -d " \t\n\r"`;
+        $Request->{State} = inet_ntoa(scalar gethostbyname('localhost'))
+            unless length($Request->{State}) and $Request->{State} ne "";
+        Message("ConfigServer: GetName() => $Request->{State}")
+            if $Verbose;
+        }
+
+    #
+    # GetNetworks - Return list of networks
+    #
+    elsif( $Request->{Type} eq "GetNetworks" ) {
+        Message("ConfigServer: GetNetworks()")
+            if $Verbose;
+        $Request->{Error} = "No error.";
+        $Request->{State} = GetIWList();
+        }
+
+    #
+    # UseWifi - Use the selected wifi/password
+    #
+    elsif( $Request->{Type} eq "UseWifi" ) {
+        my $SSID     = $Request->{Arg1};
+        my $Password = $Request->{Arg2};
+        Message("ConfigServer: UseWifi($SSID,$Password)")
+            if $Verbose;
+        $Request->{Error} = UseWifi($SSID,$Password);
+        }
+
+    #
+    # Unknown request type: Return error to caller
+    #
+    else {
+        Message("ConfigServer: Unknown request type ($Request->{Type})")
+            if $Verbose;
+        }
+
+    #
+    # Pack up the error message and return the struct to the caller
+    #
+    SendResponse($Conn,$Request);
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## UseWifi - Set the system to use the selected wifi
+##
+## Inputs:      Name of wifi to use
+##              Password to use
+##
+## Outputs:     None
+##
+sub UseWifi {
+    my $SSID     = shift;
+    my $Password = shift;
+
+my $wpa_text = <<"END_WPA";
+
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+	ssid="$SSID"
+	psk="$Password"
+    }
+END_WPA
+
+    write_file("/etc/wpa_supplicant/wpa_supplicant.conf",$wpa_text);
+    `sudo reboot`;
+    }

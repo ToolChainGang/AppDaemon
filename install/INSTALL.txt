@@ -1,0 +1,27 @@
+Step 01: Copy AppDaemon directory to /root
+    > sudo su
+    > git clone ...AppDaemon
+
+=======================================
+Step 02: Upgrade OS and apps needed
+    cd /root/AppDaemon/config
+    ./05-UpgradeInstall.sh
+
+    (Repeat as needed until no errors)
+
+=======================================
+Step 03: Upgrade perl and libraries
+    cd /root/AppDaemon/config
+    ./06-UpgradePerl.sh
+
+    (Repeat as needed until no errors)
+
+########################################################################################################################
+#
+# The following command will periodically scan and print out AP ESSID's
+#
+# Run this from a command prompt on your laptop to continuously scan for APs while
+#   debugging the AppDaemon
+#
+watch -n5 "iwlist wlan0 scan | grep -i ESSID"
+

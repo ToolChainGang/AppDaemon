@@ -1,0 +1,433 @@
+#!/usr/bin/perl
+#
+########################################################################################################################
+########################################################################################################################
+##
+##      Copyright (C) 2020 Peter Walsh, Milford, NH 03055
+##      All Rights Reserved under the MIT license as outlined below.
+##
+##  FILE
+##
+##      AppDaemon
+##
+##  DESCRIPTION
+##
+##      App daemon startup
+##
+##      This is a daemon that monitors user applications. The intent is for a high-reliability system where
+##        one process is doing something which may or may not hang, crash, or otherwise become a problem.
+##        Whenever a problem with the application is detected, this daemon will reboot the system and
+##        presumably reset the system.
+##
+##      Additionally, for RasPi systems this demon can monitor a GPIO input as button press. When pressed,
+##        the system switches to AP mode and shows a web page that allows a user to configure the system.
+##        In this way, an end-user can install and configure the device using a cell phone or other
+##        net enabled computer without technical expertise.
+##
+##      AppDaemon runs in root context, and is started in /etc/rc.local. The monitored applications are
+##        executed in user context by this demon.
+##
+##      Since debugging applications started in rc.local is difficult, AppDaemon keeps logs of its
+##        activity in the AppDaemon directory (/root/AppDaemon/logs). If you're having trouble, look there
+##        for useful information.
+##
+##  USAGE
+##
+##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --user=<user> App1 [App2 ... ]
+##
+##      where:
+##
+##          --SSID=name             Name to show when in access point mode
+##
+##          --config-gpio=#         GPIO of button to enter config mode
+##
+##          --led-gpio=#            GPIO of LED (to blink when in AP mode)
+##
+##          --user=<user>           User to run applications as (ie - "pi" for raspberry pi default user)
+##
+##          App[n]                  Applications to run and monitor
+##
+##          -verbose                Print out things as they happen
+##          -v
+##
+##          If ap-name is not given, will use the text in /etc/hostname. If this file is blank or
+##            missing, will use the literal "RasPi"
+##
+##          If led-gpio is not given, will not attempt to blink anything when entering config mode.
+##
+##          If config-gpio is not given, will not enter config/ap mode.
+##
+##          If user is not given, will use "pi"
+##
+##  NOTES
+##
+##      RUN AS ROOT FROM /etc/rc.local! Be careful!
+##
+########################################################################################################################
+########################################################################################################################
+##
+##  MIT LICENSE
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy of
+##    this software and associated documentation files (the "Software"), to deal in
+##    the Software without restriction, including without limitation the rights to
+##    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+##    of the Software, and to permit persons to whom the Software is furnished to do
+##    so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in
+##    all copies or substantial portions of the Software.
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+##    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+##    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+##    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+##    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+##    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+########################################################################################################################
+########################################################################################################################
+
+use strict;
+use warnings;
+use Carp;
+
+use RPi::Pin;
+use RPi::Const qw(:all);
+
+use File::Slurp;
+use File::Basename;
+
+use lib "/root/AppDaemon/lib";
+
+use Site::Process;
+use Site::RasPiUtils;
+use Site::CommandLine;
+
+local $ENV{PATH} = "$ENV{PATH}:/root/AppDaemon/bin";
+
+our $VERSION = 'AppDaemon2020-10-20';
+
+########################################################################################################################
+########################################################################################################################
+##
+## Data declarations
+##
+########################################################################################################################
+########################################################################################################################
+
+use constant INACTIVITY_TIMEOUT => 300; # Seconds to wait for connection after button press
+
+my $ConfigGPIO = -1;    # Config switch
+my $LEDGPIO    = -1;    # Config LED
+
+my $Interface = "wlan0";                # Interface the AP appears on
+my $SSID      = `cat /etc/hostname | tr -d " \t\n\r"`;            # SSID is hostname
+
+my $APPUSER   = "pi";
+my $USERDIR   = "/home/$APPUSER";
+my $LOGDIR    = "/root/AppDaemon/logs";
+
+my $HTTPPort = IAmRoot() ? 80 : 8000;
+my $WebCmd   = "python2 -m HTTPServer $HTTPPort";
+my $APCmd    = "create_ap -n --redirect-to-localhost $Interface $SSID";
+my $EndAPCmd = "create_ap --stop $Interface";
+
+my $Switch;
+my $LED;
+
+my $Verbose = 0;
+
+#
+# Overall system State, see below
+#
+use constant IDLE         => 1;
+use constant WAIT_CONNECT => 2;
+use constant CONNECTED    => 3;
+
+my $State = IDLE;
+
+my $ConnectTimer;   # Time to wait for user to connect to system, before going back to IDLE
+
+$| = 1;             # Flush output immediately
+
+########################################################################################################################
+########################################################################################################################
+##
+## Command line
+##
+##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --user=<user> App1 [App2 ... ]
+##
+########################################################################################################################
+########################################################################################################################
+
+ParseCommandLine("SSID=s"        => \$SSID,
+                 "config-gpio=i" => \$ConfigGPIO,
+                 "led-gpio=i"    => \$LEDGPIO,
+                 "user=s"        => \$APPUSER,
+                 "v|verbose"     => \$Verbose);
+
+my @Apps = @ARGV;
+
+$USERDIR = "/home/$APPUSER";
+
+$SSID = "RasPi"
+    unless length($SSID) and $SSID ne "";
+
+if( $ConfigGPIO >= 0 ) {
+    $Switch = RPi::Pin->new($ConfigGPIO);
+    $Switch->mode(INPUT);
+    $Switch->pull(PUD_UP);
+    }
+
+if( $LEDGPIO >= 0 ) {
+    $LED = RPi::Pin->new($LEDGPIO);
+    $LED->mode(OUTPUT);
+    $LED->write(LOW);
+    }
+
+#
+# The AP server will send SIGUSR1 when the user connects or takes any action, indicating that the
+#   inactivity timeout should reset.
+#
+$SIG{USR1} = sub {
+    $LED->write(1);         # Turn LED full (non-blinking) on
+
+    Message("State: CONNECTED")
+        if $Verbose && $State != CONNECTED;
+
+    Message("State: (Reset inactivity timer)")
+        if $Verbose;
+
+    $ConnectTimer = INACTIVITY_TIMEOUT;
+    $State        = CONNECTED;
+    };
+
+########################################################################################################################
+########################################################################################################################
+##
+## AppDaemon
+##
+########################################################################################################################
+########################################################################################################################
+
+chdir("/root/AppDaemon/public_html");
+
+#
+# Start the AppDaemon
+#
+# The -v option prints out debug information
+#
+Message("AppDaemon is up and running.")
+    if $Verbose;
+
+Message("State: IDLE")
+    if $Verbose;
+
+if( $ConfigGPIO >= 0 ) {
+    StartUserApps()
+        unless $Switch->read() == 0;
+    }
+
+########################################################################################################################
+#
+# At this point, everything should be working. Keep checking for the config switch, and reboot if
+#   something crashes.
+#
+while(1) {
+
+    sleep(1);
+
+    #
+    # IDLE: Wait for config button press
+    #
+    if( $State == IDLE ) {
+
+        if( $ConfigGPIO >= 0 ) {
+            next
+                unless $Switch->read() == 0;
+            }
+
+        Message("State: WAIT_CONNECT")
+            if $Verbose;
+
+        $ConnectTimer = INACTIVITY_TIMEOUT;
+        $State        = WAIT_CONNECT;
+
+        EndBackgroundCommands();
+
+        StartAPD();
+
+        next;
+        }
+
+    #
+    # WAIT_CONNECT: Wait for user to connect and call up page
+    #
+    if( $State == WAIT_CONNECT ) {
+        if( $LEDGPIO >= 0 ) {
+            $LED->write($ConnectTimer % 2);     # Blink the LED
+            }
+
+        #
+        # If no connections are made in INACTIVITY_TIMEOUT seconds, go back to idle
+        #
+        $ConnectTimer--;
+
+        if( $ConnectTimer <= 0 ) {
+            $LED->write();                  # Turn off LED
+            $State = IDLE;
+            StopAPD();
+            Message("State: IDLE (timeout)")
+                if $Verbose;
+            StartUserApps();
+            }
+
+        next;
+        }
+
+    #
+    # CONNECTED: Keep the LED on, and let the Dev process do its thing
+    #
+    if( $State == CONNECTED ) {
+
+        if( $LEDGPIO >= 0 ) {
+            $LED->write(1);         # Turn on LED while connected
+            }
+
+        #
+        # If no actions are taken in CONNECTED mode, go back to idle
+        #
+        $ConnectTimer--;
+
+        if( $ConnectTimer <= 0 ) {
+
+            if( $LEDGPIO >= 0 ) {
+                $LED->write(0);         # Turn off LED
+                }
+
+            $State = IDLE;
+            StopAPD();
+            Message("State: IDLE (timeout)")
+                if $Verbose;
+            StartUserApps();
+            }
+
+        next;
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## StartAPD - Start the access point daemon
+##
+## Inputs:      None.
+##
+## Outputs:     None.
+##
+sub StartAPD {
+
+    if( IAmRoot() ) {
+        Message("Stopping dhcpcd, starting AP");
+        TimeoutCommand("systemctl stop dhcpcd");
+        TimeoutCommand("systemctl stop dnsmasq");
+        BackgroundCommand($APCmd);
+        }
+
+    Message("Starting config web server");
+    BackgroundCommand($WebCmd);
+    }
+
+########################################################################################################################
+########################################################################################################################
+##
+## StopAPD - Stop the access point daemon
+##
+## Inputs:      None.
+##
+## Outputs:     None.
+##
+sub StopAPD {
+
+    Message("Stopping web and Config servers");
+
+#TimeoutCommand("reboot");
+
+    TimeoutCommand($EndAPCmd);
+
+    Message("Stopping all background commands")
+        if $Verbose;
+
+    EndBackgroundCommands();
+
+    if( IAmRoot() ) {
+        Message("Stopping AP, starting dhcpcd");
+        TimeoutCommand("systemctl start dnsmasq");
+        sleep 5;
+        TimeoutCommand("systemctl start dhcpcd");
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## StartUserApps - Start up all the user applications
+##
+## Inputs:      None.
+##
+## Outputs:     None.
+##
+sub StartUserApps {
+
+    RotateLogs();
+
+    Message("Starting user commands")
+        if $Verbose;
+
+    foreach my $App (@Apps) {
+        my ($BaseName,$Path,$Extension) = fileparse($App, qr/\.[^.]*/);
+
+        Message("    $App")
+            if $Verbose;
+
+        BackgroundCommand("sudo --user $APPUSER $App >$LOGDIR/logs/$BaseName.log 2>&1");
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## Rotate logs - Rotate the log directories in user space
+##
+## Inputs:      None.
+##
+## Outputs:     None.
+##
+sub RotateLogs {
+
+    #
+    # On first install, the log dirs might not exist.
+    #
+    if( ! -d "$LOGDIR" ) {
+        `mkdir "$LOGDIR"`;
+        `mkdir "$LOGDIR/logs"`;
+        `mkdir "$LOGDIR/logs.bak"`;
+        `mkdir "$LOGDIR/logs.bak1"`;
+        `mkdir "$LOGDIR/logs.bak2"`;
+        }
+
+    #
+    # Rotate the logs for the user
+    #
+    `rm -rf $LOGDIR/logs.bak3`;
+    `mv  -f $LOGDIR/logs.bak2 $LOGDIR/logs.bak3`;
+    `mv  -f $LOGDIR/logs.bak1 $LOGDIR/logs.bak2`;
+    `mv  -f $LOGDIR/logs.bak  $LOGDIR/logs.bak1`;
+    `mv  -f $LOGDIR/logs      $LOGDIR/logs.bak`;
+
+    `mkdir "$LOGDIR/logs"`;
+    }

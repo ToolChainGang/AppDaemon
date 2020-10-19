@@ -1,0 +1,197 @@
+#!/usr/bin/perl
+#
+########################################################################################################################
+########################################################################################################################
+##
+##      Copyright (C) 2020 Peter Walsh, Milford, NH 03055
+##      All Rights Reserved under the MIT license as outlined below.
+##
+##  FILE
+##      ConfigureSamba
+##
+##  DESCRIPTION
+##      Do simple samba configuration for remote disk mounting
+##
+##      Do the incantations necessary to configure the samba server for remote directory sharing.
+##        (Ie: making a local RasPi directory available for remote sharing.)
+##
+##  USAGE
+##      ConfigureSamba [--user=<user>] [--password=<password>] [--workgroup=<workgroup>]
+##
+##      --user=<user>           Samba user used for remote access
+##      -u <user>
+##
+##      --password=<password>   Samba password for remote access
+##      -p password
+##
+##      --workgroup=<group>     Samba workgroup
+##      -w <group>
+##
+##      -v              Print verbose information
+##      --verbose
+##
+##      -h              Print help and usage
+##      --help
+##
+##      --version       Print version information
+##
+##  EXAMPLE
+##      ConfigureSamba --user=pisamba --password=somepw --workgroup=myhome
+##
+##      This will configure samba so that remote systems can mount locally defined shares.
+##        For example, the following auto.conf line will automatically mount the RasPi 
+##        display directory of the default configuration on the users linux system:
+##
+##  /mnt/Display01  -fstype=cifs,username=pisamba,password=somepw,domain=myhome,auto,vers=1.0  ://Display01/Display
+##
+##  NOTES:
+##      MUST BE EXECUTED AS ROOT!
+##
+##      WILL REMOVE ANY EXISTING SAMBA USER AND PASSWORD FROM THE SYSTEM!
+##
+##      Workgroup can be set independently of user/password. User and password must be used together.
+##
+########################################################################################################################
+########################################################################################################################
+##
+##  MIT LICENSE
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy of
+##    this software and associated documentation files (the "Software"), to deal in
+##    the Software without restriction, including without limitation the rights to
+##    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+##    of the Software, and to permit persons to whom the Software is furnished to do
+##    so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in
+##    all copies or substantial portions of the Software.
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+##    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+##    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+##    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+##    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+##    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+########################################################################################################################
+########################################################################################################################
+
+use strict;
+use warnings;
+use Carp;
+
+use lib "/root/AppDaemon/lib";
+
+use Site::RasPiUtils;
+use Site::CommandLine;
+
+local $ENV{PATH} = "$ENV{PATH}:/root/AppDaemon/bin";
+
+our $VERSION = '1.0';
+
+########################################################################################################################
+########################################################################################################################
+##
+## Data declarations
+##
+########################################################################################################################
+########################################################################################################################
+
+$| = 1;         # Flush output immediately
+
+my $UserName = "";
+my $Password = "";
+my $Workgroup;
+my $Verbose = 0;
+
+##      ConfigureSamba [--user=<user>] [--password=<password>] [--workgroup=<workgroup>]
+
+ParseCommandLine("u|user=s"      => \$UserName,
+                 "p|password=s"  => \$Password,
+                 "w|workgroup=s" => \$Workgroup,
+                 "v|verbose"     => \$Verbose);
+
+my $PiUser  = "pi";
+
+#
+# Only allowed as root
+#
+die "Must be run by root\n"
+    unless IAmRoot();
+
+#
+# Ensure that the disk has been expanded
+#
+unless( DiskExpanded() ) {
+    print "============>Disk is not expanded.\n";
+    print "(Hint: raspi-config --expand-rootfs; sudo reboot)\n";
+    print "\n";
+    exit(-1);
+    }
+
+########################################################################################################################
+########################################################################################################################
+##
+## Configure samba
+##
+########################################################################################################################
+########################################################################################################################
+
+my $RestartSamba = 0;
+
+#
+# Change the workgroup, if requested
+#
+if( defined $Workgroup and length $Workgroup ) {
+
+    `sed -i "s/workgroup = .*/workgroup = $Workgroup/" /etc/samba/smb.conf`;
+
+    print "Changed samba workgroup to $Workgroup\n"
+        if $Verbose;
+
+    $RestartSamba = 1;
+    }
+
+#
+# Change the samba user and password, if requested
+#
+die "User also requires password\n"
+    if length $UserName > 0 and length($Password) == 0;
+
+die "Password also requires user\n"
+    if length $Password > 0 and length($UserName) == 0;
+
+die "Samba user must not be $PiUser login\n"
+    unless $UserName ne "$PiUser";
+
+if( defined $UserName and length $UserName and
+    defined $Password and length $Password ) {
+
+    my $Cmd;        # For debugging 
+    $Cmd = "smbpasswd -x $UserName"                                              ; `$Cmd`;
+    $Cmd = "useradd -s /usr/bin/false -M $UserName -p $Password"                 ; `$Cmd`;
+    $Cmd = "usermod -L $UserName"                                                ; `$Cmd`;      # (locks user from logging in)
+    $Cmd = "usermod -a -G $PiUser $UserName"                                     ; `$Cmd`;      # Adds samba user to pi group
+    $Cmd = "(echo \"$Password\"; echo \"$Password\") | smbpasswd -a -s $UserName"; `$Cmd`;
+
+    $RestartSamba = 1;
+    }
+
+#
+# Restart samba
+#
+if( $RestartSamba ) {
+
+    print "Restarting samba\n"
+        if $Verbose;
+
+    `service smbd restart`;
+    `service nmbd restart`;
+
+    print "Done.\n\n";
+    }
+else {
+    print "Nothing to do.\n\n";
+    }
+
+exit(0);

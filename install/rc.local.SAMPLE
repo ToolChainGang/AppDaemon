@@ -1,0 +1,119 @@
+#!/bin/sh -e
+#
+########################################################################################################################
+########################################################################################################################
+##
+##      Copyright (C) 2020 Peter Walsh, Milford, NH 03055
+##      All Rights Reserved under the MIT license as outlined below.
+##
+##  FILE
+##
+##      rc.local.SAMPLE
+##
+##  DESCRIPTION
+##
+##      Sample system startup script (rc.local) for RasPi AppDaemon
+##
+##  USAGE
+##
+##      None. (Executed by system at boot)
+##
+########################################################################################################################
+########################################################################################################################
+##
+##  MIT LICENSE
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy of
+##    this software and associated documentation files (the "Software"), to deal in
+##    the Software without restriction, including without limitation the rights to
+##    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+##    of the Software, and to permit persons to whom the Software is furnished to do
+##    so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in
+##    all copies or substantial portions of the Software.
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+##    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+##    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+##    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+##    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+##    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+########################################################################################################################
+########################################################################################################################
+
+#set -n    # For debugging
+
+########################################################################################################################
+#
+# Ensure that the disk has been expanded
+#
+DiskSize="$(lsblk  -b /dev/mmcblk0   | grep disk | awk '{print $4}')"
+Part1Size="$(lsblk -b /dev/mmcblk0p1 | tail -n1  | awk '{print $4}')"
+Part2Size="$(lsblk -b /dev/mmcblk0p2 | tail -n1  | awk '{print $4}')"
+Unused=$(($DiskSize-$Part1Size-$Part2Size))
+
+#  echo "Disk  : $DiskSize"
+#  echo "Part1 : $Part1Size"
+#  echo "Part2 : $Part2Size"
+#  echo "Unused: $Unused"
+
+########################################################################################################################
+#
+# The SaveCard program will add an additional 20 MB for proper booting. If the resulting image
+#   has less than 500MB of free space, we assume that the disk hasn't been expanded.
+#
+if [ "$Unused" -gt 500000000 ]; then
+    echo "============>Disk is not expanded, automatically expanding with reboot..."
+    echo "\n"
+    raspi-config --expand-rootfs
+    reboot
+    fi
+
+
+########################################################################################################################
+#
+# Message - Show message in boot screen
+#
+# Inputs:   $Fail       If message indicates a failure, (==1) print in Red, else (==0) print in Green
+#           $Msg        Message to print
+#
+# Outputs:  None.
+#
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'            # No Color
+
+Message() {
+    if [ $1 -gt 0 ]; then
+        echo "[${RED}FAILED${NC}] $2"
+    else
+        echo "[${GREEN}  OK  ${NC}] $2"
+    fi
+    }
+
+########################################################################################################################
+#
+# Print the IP address
+#
+IP=$(hostname -I) || true
+if [ "$IP" ]; then
+    Message 0 "======> My IP address is $IP"
+fi
+
+########################################################################################################################
+#
+# Start the AppDaemon
+#
+set +e
+
+ConfigGPIO = 22;        # Config switch GPIO22, Connector pin 15, GPIO (command) BCM 22
+LEDGPIO    = 21;        # Config LED    GPIO21, Connector pin 40, GPIO (command) BCM 21
+
+#nohup /root/AppDaemon/bin/AppDaemon   --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
+nohup /root/AppDaemon/bin/AppDaemon -v --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
+
+set -e
+
+exit 0

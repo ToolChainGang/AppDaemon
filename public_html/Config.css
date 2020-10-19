@@ -1,0 +1,59 @@
+@CHARSET "ISO-8859-1";
+
+* {
+    box-sizing: border-box;
+    border:     0;                  /* Comment this out for debugging */
+    }
+
+body {
+    background-color:   WhiteSmoke;
+    margin:         0;
+    }
+
+/***********************************************************************
+ *
+ * Pivot logo
+ */
+.plogo {
+    font-family:    Arial Black,Arial Bold,Gadget,sans-serif;
+    }
+
+.plp { color: black;     }
+.pli { color: limegreen; }
+.plv { color: orange;    }
+.plo { color: purple;    }
+.plt { color: crimson;   }
+
+/***********************************************************************
+ *
+ * Other pages
+ */
+.PageDiv { width: 100%;
+    max-width:      1024px;
+    }
+
+.SSIDButton { 
+    max-height:     60px;
+    border:         2px solid black;
+    border-radius:  15px;
+    -moz-border-radius: 15px;
+    }
+
+.NavButton { 
+    max-height:     60px;
+    border:         2px solid black;
+    border-radius:  15px;
+    -moz-border-radius: 15px;
+    }
+
+.WifiText { 
+    color:          orange;
+    }
+
+input {
+    border-style:   solid;
+    border-width:   1px;
+    border-color:   black;
+    font-family:    helvetica, arial, sans serif;
+    padding-left:   0px;
+    }
