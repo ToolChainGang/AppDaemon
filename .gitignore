@@ -1,0 +1,4 @@
+#
+# Don't save log files, or the containing directory
+#
+/logs
