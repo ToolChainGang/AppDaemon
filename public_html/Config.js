@@ -64,7 +64,7 @@
                 }
 
             if( ConfigData["Type"] == "GetConfig" ) {
-                console.log(ConfigData);
+#                console.log(ConfigData);
                 Config = ConfigData.State;
                 var SysName = Config.SysNamePage.Name;
                 console.log("Name: " + SysName);
