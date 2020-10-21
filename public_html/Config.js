@@ -96,21 +96,21 @@
     function GotoPage(PageName) {
 
         document.getElementById("TOCPage")     .style.display = "none";
-        document.getElementById("NamePage")    .style.display = "none";
+        document.getElementById("SystemPage")  .style.display = "none";
         document.getElementById("SharingPage") .style.display = "none";
         document.getElementById("ScanningPage").style.display = "none";
         document.getElementById("SSIDPage")    .style.display = "none";
         document.getElementById("PasswordPage").style.display = "none";
-        document.getElementById("RebootPage")  .style.display = "none";
+        document.getElementById("ReviewPage")  .style.display = "none";
         document.getElementById("EpiloguePage").style.display = "none";
 
         if( PageName == "TOCPage"     ) { PopulateTOCPage();           }
-        if( PageName == "NamePage"    ) { PopulateNamePage();          }
+        if( PageName == "SystemPage"  ) { PopulateSystemPage();        }
         if( PageName == "SharingPage" ) { PopulateSharingPage();       }
         if( PageName == "ScanningPage") { ConfigCommand("GetNetworks");}
         if( PageName == "SSIDPage"    ) { PopulateSSIDPage(WifiList);  }
         if( PageName == "PasswordPage") { PopulatePasswordPage();      }
-        if( PageName == "RebootPage"  ) { PopulateRebootPage();        }
+        if( PageName == "ReviewPage"  ) { PopulateReviewPage();        }
         if( PageName == "EpiloguePage") { ConfigCommand("UseWifi",SSID,Password); }
 
         document.getElementById(PageName).style.display = "block";
@@ -126,9 +126,9 @@
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
-    // PopulateNamePage - Populate the name page as needed
+    // PopulateSystemPage - Populate the System page as needed
     //
-    function PopulateNamePage() {
+    function PopulateSystemPage() {
 
         }
 
@@ -202,7 +202,7 @@
             return;
             }
 
-        GotoPage("RebootPage");
+        GotoPage("ReviewPage");
         }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -216,9 +216,9 @@
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
-    // PopulateRebootPage - Populate the reboot page with chosen SSID and password
+    // PopulateReviewPage - Populate the review page with chosen settings
     //
-    function PopulateRebootPage() {
+    function PopulateReviewPage() {
 
         Password = document.getElementById("Password").value;
 

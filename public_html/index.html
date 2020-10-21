@@ -14,16 +14,41 @@
 <body>
 
 <div id="TOCPage" style="display: block;" class="PageDiv">
-    <h1>Configure system: <span class="SysName"></span></h1>
-    <table id="TOCTable">
-        <tr><td><button class="NavButton" onclick=GotoPage('ScanningPage') >Wifi settings</button></td></tr>
-        <tr><td><button class="NavButton" onclick=GotoPage('NamePage')     >System name</button></td></tr>
-        <tr><td><button class="NavButton" onclick=GotoPage('SharingPage')  >File sharing</button></td></tr>
-        <tr><td><button class="NavButton" onclick=GotoPage('RebootPage')   >Reboot</button></td></tr>
-        </table>
+    <table class="TOCColumns" summary="System Configuration">
+        <tr><td style="width: 20%"></td><td style="width: 60%">
+        <h1>Configure system: <span class="SysName"></span></h1>
+        <table id="TOCTable">
+            <tr><td><img class="NavButton" src="images/Wifi.png"    title="Wifi"            onclick=GotoPage("ScanningPage") /></td><td><h2>Wifi        </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/System.png"  title="System"          onclick=GotoPage("SystemPage")   /></td><td><h2>System      </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Wlan.png"    title="Wireless Net"    onclick=GotoPage("WLanPage")     /></td><td><h2>Wireless Net</h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Ether.png"   title="Wired Net"       onclick=GotoPage("ELanPage")     /></td><td><h2>Wired Net   </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Sharing.png" title="Network"         onclick=GotoPage("SharingPage")  /></td><td><h2>Sharing     </h2></td></tr>
+            <tr><td>&nbsp;</td></tr>
+            <tr><td><img class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   /></td><td><h2>Review and save </h2></td></tr>
+            </table>
+        </td></tr></table>
     </div>
 
-<div id="NamePage" style="display: none;" class="PageDiv">
+
+
+<div id="SystemPage" style="display: none;" class="PageDiv">
+    <table class="NavHeader"><tr>
+    <td>
+        <h2>About <span class="SysName"></span>:</h2>
+        </td>
+    <td>
+        <div style="float: right">
+            <img class="NavButton" src="images/Wifi.png"    title="Wifi"            onclick=GotoPage("ScanningPage") />
+            <img class="NavButton" src="images/System.png"  title="System"          onclick=GotoPage("SystemPage")   />
+            <img class="NavButton" src="images/Network.png" title="Network"         onclick=GotoPage("NetworkPage")  />
+            <img class="NavButton" src="images/Sharing.png" title="Network"         onclick=GotoPage("SharingPage")  />
+            <img class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   />
+            </div>
+        </td>
+    </tr></table>
+
+
+
     <h1>System name is: <span class="SysName"></span></h1>
     <h1>Enter new name:</h1>
     <h3>&nbsp;</h3>
@@ -57,12 +82,12 @@
     <h1>Enter password for Wifi: <span id="EnterWifi" class="WifiText"></span></h1>
     <center>
         <input  id="Password" name="password" required>
-        <button class="SSIDButton" onclick=GotoPage('RebootPage') >Connect</button>
+        <button class="SSIDButton" onclick=GotoPage('ReviewPage') >Connect</button>
         <button class="SSIDButton" onclick=GotoPage('TOCPage')    >Go Back</button>
         </center>
     </div>
 
-<div id="RebootPage" style="display: none;" class="PageDiv">
+<div id="ReviewPage" style="display: none;" class="PageDiv">
     <center>
     <h2><span class="SysName"></span> will connect to:</h2>
     <h3 id="WifiSSID"     class="WifiText"></h2>
