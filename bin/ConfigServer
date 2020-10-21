@@ -54,7 +54,7 @@ use Carp;
 our $VERSION = 'AppDaemon2020-10-20';
 
 use JSON;
-use File::Slurp qw(write_file);
+use File::Slurp qw(read_file write_file);
 use Socket;
 
 use lib "/root/AppDaemon/lib";
@@ -164,15 +164,23 @@ sub WebRequest {
         unless length $Request->{Type};
 
     #
-    # GetName - Return the system name
+    # GetConfig - Return the complete system configuration struct
     #
-    if( $Request->{Type} eq "GetName" ) {
+    if( $Request->{Type} eq "GetConfig" ) {
         $Request->{Error} = "No error.";
-        $Request->{State} = `cat /etc/hostname | tr -d " \t\n\r"`;
-        $Request->{State} = inet_ntoa(scalar gethostbyname('localhost'))
-            unless length($Request->{State}) and $Request->{State} ne "";
-        Message("ConfigServer: GetName() => $Request->{State}")
+        Message("ConfigServer: GetConfig()")
             if $Verbose;
+        GetConfig($Request,$Verbose);
+        }
+
+    #
+    # SetConfig - Implement the user configuration
+    #
+    elsif( $Request->{Type} eq "SetConfig" ) {
+        $Request->{Error} = "No error.";
+        Message("ConfigServer: SetConfig()")
+            if $Verbose;
+        SetConfig($Request,$Verbose);
         }
 
     #
@@ -214,6 +222,72 @@ sub WebRequest {
 ########################################################################################################################
 ########################################################################################################################
 ##
+## GetConfig - Read (and return) configuration info for system
+##
+## Inputs:      Server request packet
+##              TRUE if verbose mode
+##
+## Outputs:     None
+##
+sub GetConfig {
+    my $Request = shift;
+    my $Verbose = shift;
+
+    my $State;
+
+    $State->{WifiPage}     = {};
+    $State->{SysNamePage}  = {};
+    $State->{WLanPage}     = {};
+    $State->{ELanPage}     = {};
+    $State->{SharingPage}  = {};
+    $State->{AboutPage}    = [];
+
+    #################################################
+    #
+    # "SysNamePage" page has system information
+    #
+    my $SysName = `cat /etc/hostname | tr -d " \t\n\r"`;
+       $SysName = inet_ntoa(scalar gethostbyname('localhost'))
+            unless length($SysName) and $SysName ne "";
+
+    $State->{SysNamePage}{Name} = $SysName;
+
+    Message("ConfigServer: GetConfig(SysName  ) => $State->{SysNamePage}{Name}")
+            if $Verbose;
+
+    #################################################
+    #
+    # "AboutPage" has system information
+    #
+    my @Info = `hostnamectl`;
+    chomp @Info;
+
+    push @{$State->{AboutPage}}, $Info[0];        # "   Static hostname: raspberrypi"
+    push @{$State->{AboutPage}}, $Info[4];        # "  Operating System: Raspbian GNU/Linux 10 (buster)"
+    push @{$State->{AboutPage}}, $Info[5];        # "            Kernel: Linux 5.4.51-v7l+"
+    push @{$State->{AboutPage}}, $Info[6];        # "      Architecture: arm"
+
+    foreach my $Line (read_file("../etc/about")) {
+        chomp $Line;
+
+        next
+            if substr($Line,0,1) eq "#";
+
+        push @{$State->{AboutPage}}, $Line        # Product application info
+        }        
+
+    if( $Verbose ) {
+        Message("ConfigServer: GetConfig(AboutPage) => $_")
+            foreach @{$State->{AboutPage}};
+        }
+
+    $Request->{State} = $State;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
 ## UseWifi - Set the system to use the selected wifi
 ##
 ## Inputs:      Name of wifi to use
@@ -232,8 +306,8 @@ update_config=1
 country=US
 
 network={
-	ssid="$SSID"
-	psk="$Password"
+    ssid="$SSID"
+    psk="$Password"
     }
 END_WPA
 

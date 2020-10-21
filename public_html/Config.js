@@ -12,11 +12,8 @@
     var WindowWidth;
     var WindowHeight;
 
-    var SysName;
+    var Config;
     var WifiList;
-    var Wifi;
-    var SSID;
-    var Password;
 
     //
     // On first load, calculate reliable page dimensions and do page-specific initialization
@@ -53,11 +50,11 @@
             if( ConfigData["Error"] != "No error." ) {
                 console.log("Error: "+ConfigData["Error"]);
                 console.log("Msg:   "+Event.data);
-                alert(ConfigData["Error"]);
+                 alert("Erorr: " + ConfigData["Error"]);
                 return;
                 }
 
-//            console.log("Msg: "+Event.data);
+            console.log("Msg: "+Event.data);
 
             if( ConfigData["Type"] == "GetNetworks" ) {
                 console.log(ConfigData);
@@ -66,11 +63,12 @@
                 return;
                 }
 
-            if( ConfigData["Type"] == "GetName" ) {
+            if( ConfigData["Type"] == "GetConfig" ) {
                 console.log(ConfigData);
-                SysName = ConfigData.State;
+                Config = ConfigData.State;
+                var SysName = Config.SysNamePage.Name;
+                console.log("Name: " + SysName);
                 SysNameElements = document.getElementsByClassName("SysName");
-//                console.log(SysNameElements);
                 for (i = 0; i < SysNameElements.length; i++) {
                     SysNameElements[i].innerHTML = SysName;
                     };
@@ -85,7 +83,7 @@
             };
 
         ConfigSocket.onopen = function(Event) {
-            ConfigCommand("GetName");
+            ConfigCommand("GetConfig");
             }
         };
 
@@ -95,23 +93,22 @@
     //
     function GotoPage(PageName) {
 
-        document.getElementById("TOCPage")     .style.display = "none";
-        document.getElementById("SystemPage")  .style.display = "none";
-        document.getElementById("SharingPage") .style.display = "none";
-        document.getElementById("ScanningPage").style.display = "none";
-        document.getElementById("SSIDPage")    .style.display = "none";
-        document.getElementById("PasswordPage").style.display = "none";
-        document.getElementById("ReviewPage")  .style.display = "none";
-        document.getElementById("EpiloguePage").style.display = "none";
+        Pages = document.getElementsByClassName("PageDiv");
 
-        if( PageName == "TOCPage"     ) { PopulateTOCPage();           }
-        if( PageName == "SystemPage"  ) { PopulateSystemPage();        }
-        if( PageName == "SharingPage" ) { PopulateSharingPage();       }
-        if( PageName == "ScanningPage") { ConfigCommand("GetNetworks");}
-        if( PageName == "SSIDPage"    ) { PopulateSSIDPage(WifiList);  }
-        if( PageName == "PasswordPage") { PopulatePasswordPage();      }
-        if( PageName == "ReviewPage"  ) { PopulateReviewPage();        }
-        if( PageName == "EpiloguePage") { ConfigCommand("UseWifi",SSID,Password); }
+        for (i = 0; i < Pages.length; i++) {
+            SysNameElements[i].style.display = "none";
+            };
+
+        if( PageName == "TOCPage"      ) { PopulateTOCPage(); }
+        if( PageName == "ScanningPage" ) { ConfigCommand("GetNetworks"); }
+        if( PageName == "WiFiPage"     ) { PopulateWiFiPage(); }
+        if( PageName == "SysNamePage"  ) { PopulateSysNamePage(); }
+        if( PageName == "WLanPage"     ) { PopulateWLanPage(); }
+        if( PageName == "ELanPage"     ) { PopulateELanPage(); }
+        if( PageName == "SharingPage"  ) { PopulateSharingPage(); }
+        if( PageName == "AboutPage"    ) { PopulateAboutPage(); }
+        if( PageName == "ReviewPage"   ) { PopulateReviewPage(); }
+        if( PageName == "EpilogPage"   ) { PopulateEpilogPage(); }
 
         document.getElementById(PageName).style.display = "block";
         };
@@ -121,30 +118,13 @@
     // PopulateTOCPage - Populate the directory page as needed
     //
     function PopulateTOCPage() {
-
         }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
-    // PopulateSystemPage - Populate the System page as needed
+    // PopulateWifiPage - Populate the wifi selections
     //
-    function PopulateSystemPage() {
-
-        }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // PopulateSharingPage - Populate the sharing page as needed
-    //
-    function PopulateSharingPage() {
-
-        }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // PopulateSSIDPage - Populate the SSID page with newly received SSID list
-    //
-    function PopulateSSIDPage(WifiList) {
+    function PopulateWifiPage() {
 
 //        console.log(WifiList);
 
@@ -178,6 +158,61 @@
 
         return TableLine;
         }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateSysNamePage - Populate the directory page as needed
+    //
+    function PopulateSysNamePage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateWLanPage - Populate the directory page as needed
+    //
+    function PopulateWLanPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateELanPage - Populate the directory page as needed
+    //
+    function PopulateELanPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateSharingPage - Populate the directory page as needed
+    //
+    function PopulateSharingPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateAboutPage - Populate the directory page as needed
+    //
+    function PopulateAboutPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateReviewPage - Populate the directory page as needed
+    //
+    function PopulateReviewPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateEpilogPage - Populate the directory page as needed
+    //
+    function PopulateEpilogPage() {
+        }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // PopulateSSIDPage - Populate the SSID page with newly received SSID list
+    //
+    function PopulateSSIDPage(WifiList) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -236,3 +271,4 @@
             document.getElementById("WifiPassword"   ).style.display = "none";
             }
         }
+    }
