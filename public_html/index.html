@@ -13,13 +13,17 @@
 
 <body>
 
-<div id="TOCPage" style="display: block;" class="PageDiv">
+<div id="ConnectingPage" style="display: block;" class="PageDiv">
+    <h1>Connecting...</h1>
+    </div>
+
+<div id="TOCPage" class="PageDiv">
     <table class="TOCColumns" summary="System Configuration">
         <tr><td style="width: 20%"></td><td style="width: 60%">
         <h1>Configure system: <span class="SysName"></span></h1>
         <table id="TOCTable">
             <tr><td><img class="NavButton" src="images/Wifi.png"    title="Wifi"            onclick=GotoPage("ScanningPage") /></td><td><h2>Wifi        </h2></td></tr>
-            <tr><td><img class="NavButton" src="images/SysName.png" title="System name"     onclick=GotoPage("SysnamePage")  /></td><td><h2>System Name </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/SysName.png" title="System name"     onclick=GotoPage("SysNamePage")  /></td><td><h2>System Name </h2></td></tr>
             <tr><td><img class="NavButton" src="images/Wlan.png"    title="Wireless Net"    onclick=GotoPage("WLanPage")     /></td><td><h2>Wireless Net</h2></td></tr>
             <tr><td><img class="NavButton" src="images/Ether.png"   title="Wired Net"       onclick=GotoPage("ELanPage")     /></td><td><h2>Wired Net   </h2></td></tr>
             <tr><td><img class="NavButton" src="images/Sharing.png" title="Network"         onclick=GotoPage("SharingPage")  /></td><td><h2>Sharing     </h2></td></tr>
@@ -30,48 +34,89 @@
         </td></tr></table>
     </div>
 
-
-
-<div id="SystemPage" style="display: none;" class="PageDiv">
-    <h1>System name is: <span class="SysName"></span></h1>
-    <h1>Enter new name:</h1>
-    <h3>&nbsp;</h3>
-    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
-    </div>
-
-<div id="SharingPage" style="display: none;" class="PageDiv">
-    <h1>File sharing:</h1>
-    <h3>&nbsp;</h3>
-    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
-    </div>
-
-
-<div id="ScanningPage" style="display: none;" class="PageDiv">
+<div id="ScanningPage" class="PageDiv">
     <h1>Scanning for wifi...</h1>
     </div>
 
-<div id="SSIDPage" style="display: none;" class="PageDiv">
+<div id="SSIDPage" class="PageDiv">
 
-    <h1>Which Wifi would you
-    like 
-    to use?</h1>
+    <h1>Currently using: <span id="CurrentSSID"></span> with <span id="SSIDNO">no </span>password.</h1>
+    <h1>Which Wifi would you like to use?</h1>
 
-     <center><table id="WifiNames"></table>
-            </center>
-    <h3>&nbsp;</h3>
-    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
+    <center><table id="WifiNames"></table>
+        </center>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=ChooseSSID()    /></td><td><h2>Back</h2></td></tr>
+        </table>
     </div>
 
-<div id="PasswordPage" style="display: none;" class="PageDiv">
+<div id="PasswordPage" class="PageDiv">
     <h1>Enter password for Wifi: <span id="EnterWifi" class="WifiText"></span></h1>
     <center>
         <input  id="Password" name="password" required>
-        <button class="SSIDButton" onclick=GotoPage('ReviewPage') >Connect</button>
-        <button class="SSIDButton" onclick=GotoPage('TOCPage')    >Go Back</button>
         </center>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=EnterPassword()    /></td><td><h2>Back</h2></td></tr>
+        </table>
     </div>
 
-<div id="ReviewPage" style="display: none;" class="PageDiv">
+<div id="SysNamePage" class="PageDiv">
+    <center>
+        <h1>Enter new system name:</h1>
+        <input id="SysName" name="password">
+        </center>
+
+        Valid name contain a-z, A-Z, 0-9, hyphen and underscore, and cannot begin with a hyphen.
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+    </div>
+
+<div id="WLanPage" class="PageDiv">
+    <h1>Wireless network:</h1>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+    </div>
+
+<div id="ELanPage" class="PageDiv">
+    <h1>Ethernet network:</h1>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+    </div>
+
+<div id="SharingPage" class="PageDiv">
+    <h1>File sharing:</h1>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+    </div>
+
+<div id="AboutPage" class="PageDiv">
+    <table id="InfoLines" summary="System Configuration">
+        <tr><td style="width: 10%"><h1>About:</h1></td><td>&nbsp;</td></tr>
+        </table>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+
+    </div>
+
+<div id="ReviewPage" class="PageDiv">
     <center>
     <h2><span class="SysName"></span> will connect to:</h2>
     <h3 id="WifiSSID"     class="WifiText"></h2>
@@ -82,12 +127,16 @@
     <h3>These changes will take effect at next reboot</h3>
     <h3> </h3>
     <button class="NavButton" onclick=GotoPage('EpiloguePage')  >Reboot now</button>
-    <h3>&nbsp;</h3>
-    <button class="NavButton" onclick=GotoPage('TOCPage') >Go back</button>
     </center>
+
+    <table id="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        </table>
+
     </div>
 
-<div id="EpiloguePage" style="display: none;" class="PageDiv">
+<div id="EpiloguePage" class="PageDiv">
     <center><h2><span class="plogo"><span class="plp">p</span><span class="pli">I</span><span class="plv">V</span><span class="plo">O</span><span class="plt">T</span></span>
     has returned to Wifi mode.</h2></center>
     </div>

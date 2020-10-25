@@ -129,7 +129,4 @@ sub ChangeHostname {
     `sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$HostName/g" /etc/hosts`;
     `chown root:root /etc/hosts`;
     `chmod 644       /etc/hosts`;
-
-    `figlet -f /root/AppDaemon/etc/ANSIShadow.flf $NEW_HOSTNAME  >/etc/motd`;
-    `cat       /root/AppDaemon/etc/motd                         >>/etc/motd`;
     }

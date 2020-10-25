@@ -12,37 +12,12 @@ body {
 
 /***********************************************************************
  *
- * Some useful classes
- */
-.L { float: left;  }
-.R { float: right; }
-.C { margin-left:  auto; 
-     margin-right: auto; 
-     display:      block; 
-     }
-
-.M {    /* Middle, vertically */
-    margin: 0;
-    width: 100%;
-    position: absolute;
-    top: 50%;
-    -ms-transform: translateY(-50%);
-    transform: translateY(-50%);
-    }
-
-.B {    /* Bottom, vertically */
-    width:    100%;
-    position: absolute; 
-    left:     0; 
-    bottom:   0; 
-    }
-
-/***********************************************************************
- *
  * Other pages
  */
-.PageDiv { width: 100%;
+.PageDiv {
+    width:          100%;
     max-width:      1024px;
+    display:        none;
     }
 
 .NavButton { 
@@ -53,20 +28,11 @@ body {
     -moz-border-radius: 15px;
     }
 
-.NavHeader { 
-    width:          100%;
-    }
-
-
-
-
-
-
-.SSIDButton { 
-    max-height:     60px;
-    border:         2px solid black;
-    border-radius:  15px;
-    -moz-border-radius: 15px;
+.AboutLines {
+    padding:        0;
+    border:         0;
+    margin:         0;
+    font-size:      150%;
     }
 
 .WifiText { 
@@ -79,4 +45,5 @@ input {
     border-color:   black;
     font-family:    helvetica, arial, sans serif;
     padding-left:   0px;
+    font-size:      150%;
     }
