@@ -19,12 +19,21 @@
 ##
 ##  FUNCTIONS
 ##
-##      GetNetDevs()->[]    Return an array of network devices in the system
+##      GetNetDevs()->[]    Return an array of network device names in the system (ie: [0]->"wlan0" )
 ##
-##      GetWPAInfo()->[]    Return array of WPA info
+##      GetWPAInfo()->      Return array of WPA info
 ##          ->{SSID}            SSID of WiFi to connect
 ##          ->{KeyMgmt}         Key mgmt type
 ##          ->{Password}        Password to use with connection
+##
+##      SetDHCPInfo()->      Return array of interface specifics from DHCPCD.conf
+##          ->{Lines}           Lines from file, not concerning interface info
+##          ->{IF}              Lines specific to one interface
+##          ->{IF}{Lines}           Lines specific to the interface (all of them)
+##          ->{IF}{IPAddr}          Static IP address of interface
+##          ->{IF}{Router}          Static router     of interface
+##          ->{IF}{DNS1}            Static 1st DNS to use
+##          ->{IF}{DNS2}            Static 2nd DNS to use
 ##    
 ########################################################################################################################
 ########################################################################################################################
@@ -62,6 +71,7 @@ use File::Slurp qw(read_file write_file);
 
 our @EXPORT  = qw(&GetNetDevs
                   &GetWPAInfo
+                  &GetDHCPInfo
                   );          # Export by default
 
 ########################################################################################################################
@@ -123,6 +133,10 @@ sub GetNetDevs {
 #
 # Outputs:  [Ref to] struct of WPA supplicant info
 #
+# NOTE: This function can recognize a SINGLE set of credentials on a system. This is
+#         consistent with Raspbian initial config using raspi-config. If your application
+#         uses multiple sets of Wifi credentials, this functiln will fail.
+#
 sub GetWPAInfo {
     my $WPAInfo = {};
 
@@ -137,8 +151,8 @@ sub GetWPAInfo {
     # 	key_mgmt=WPA-PSK
     #   }
     #
-    $WPAInfo->{    SSID} = `grep ssid  m  $WPAConfigFile`;
-    $WPAInfo->{Password} = `grep psk  m   $WPAConfigFile`;
+    $WPAInfo->{    SSID} = `grep ssid     $WPAConfigFile`;
+    $WPAInfo->{Password} = `grep psk      $WPAConfigFile`;
     $WPAInfo->{ KeyMGMT} = `grep key_mgmt $WPAConfigFile`;
     
     $WPAInfo->{    SSID} =~ s/^.*ssid=\"(.+)\".*/$1/;
@@ -150,6 +164,98 @@ sub GetWPAInfo {
 
     return $WPAInfo;
     }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# GetDHCPCD - Return DHCPCD information
+#
+# Inputs:   None.
+#
+# Outputs:  Hash of network data
+#
+sub GetDHCPInfo {
+    my $State     = "START";
+    my $Interface = "";
+
+    my $DHCPInfo  = { Lines => [] };
+
+    my @DHCPLines = eval{read_file($DHCPConfigFile)}    # Catches/avoids Croak() in lib function
+        or die "GetDHCPInfo: Cannot read $DHCPConfigFile ($!)";
+
+    foreach my $Line (@DHCPLines) {
+
+        chomp $Line;
+
+        ################################################################################################################
+        #
+        # START: Look for an initial interface line
+        #
+        #       interface wlan0
+        #
+        if( $State eq "START" ) {
+
+            #
+            # Anything that's not an interface block is considered a generic "line", and goes
+            #   in the generic section.
+            #
+            unless( $Line =~ "^interface" ) {
+                push @{$DHCPInfo->{Lines}},$Line;
+#print "DHCPInfo[START]: Ignoring line $Line\n";
+                next;
+                }
+
+            #
+            # When "interface" is seen, grab the name and switch to the interface parser
+            #
+            my ($Unused,$IF) = split /\s/,$Line;
+
+            $Interface = $IF;
+            $DHCPInfo->{$Interface} = {};
+            push @{$DHCPInfo->{$Interface}{Lines}},$Line;
+            $State = "IF";
+#print "DHCPInfo[START]: Interface $IF\n";
+            next;
+            }
+
+        ################################################################################################################
+        #
+        # IF: Look for interface config lines
+        #
+        #   interface wlan0
+        #       static ip_address=192.168.1.31
+        #       static routers=192.168.1.1
+        #       static domain_name_servers=1.1.1.1 1.0.0.1
+        #
+        if( $State eq "IF" ) {
+
+            #
+            # When another block begins, start a new device section
+            #
+            redo
+                if $Line =~ "interface";
+
+#print "DHCPInfo[IF]: $Line\n";
+
+            push @{$DHCPInfo->{$Interface}{Lines}},$Line;
+
+            $DHCPInfo->{$Interface}{IPAddr} = $1
+                if $Line =~ /^\s*static\s*ip_address=(\d*\.\d*\.\d*\.\d*\/\d*)/;
+
+            $DHCPInfo->{$Interface}{Router} = $1
+                if $Line =~ /^\s*static\s*routers=(\d*\.\d*\.\d*\.\d*)/;
+
+            if( $Line =~ /^\s*static\s*domain_name_servers=(\d*\.\d*\.\d*\.\d*)\s*(\d*\.\d*\.\d*\.\d*)/ ) {
+                $DHCPInfo->{$Interface}{DNS1} = $1;
+                $DHCPInfo->{$Interface}{DNS2} = $2;
+                }
+            }
+        }
+
+    return $DHCPInfo;
+    }
+
 
 
 #

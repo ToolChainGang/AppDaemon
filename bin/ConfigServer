@@ -99,10 +99,11 @@ $Verbose = 1
 
 use Data::Dumper;
 
-my $NetDevs = GetNetDevs();
-my $WPAInfo = GetWPAInfo();
+my $NetDevs  = GetNetDevs();
+my $WPAInfo  = GetWPAInfo();
+my $DHCPInfo = GetDHCPInfo();
 
-print Data::Dumper->Dump([$NetDevs, $WPAInfo], [qw(NetDevs WPAInfo)]);
+print Data::Dumper->Dump([$NetDevs, $WPAInfo, $DHCPInfo], [qw(NetDevs WPAInfo DHCPInfo)]);
 
 exit(0);
 
@@ -350,79 +351,6 @@ sub SetConfig {
 
 
     }
-
-
-########################################################################################################################
-########################################################################################################################
-##
-## ParseDHCP - Parse the DHCP config file and return info for device
-##
-## Inputs:      Device to scan for (ie "wlan0")
-##
-## Outputs:     Struct of device info
-##
-##  $Device->{Name}         Name of device (ie - "wlan0")
-##         ->{Static}       No static description found
-##         ->{IP}           IPV4 static address
-##         ->{Mask}         Mask
-##         ->{Router}       Router
-##         ->{DNS1}         Domain name server 1
-##         ->{DNS2}         Domain name server 2
-##
-#sub ParseDHCP {
-#    my $DeviceName = shift;
-#
-#    my $Device = { Name => $DeviceName, Static => 0 };
-#
-#    my @DHCPConfigLines = read_file($DHCPConfigFile);
-#
-#    #
-#    # interface wlan0
-#    #     static ip_address=192.168.1.31
-#    #     static routers=192.168.1.1
-#    #     static domain_name_servers=1.1.1.1 1.0.0.1
-#    #
-#    my $State  = "Device";
-#    foreach my $Line (@DHCPConfigLines) {
-#        chomp $Line;
-#
-#        if( $State eq "Device" ) {
-#            next
-#                unless $Line =~ /^interface\s*$DeviceName/;
-#
-#            $State = "Block";
-#            next;
-#            }
-#
-#        if( $State eq "Block" ) {
-#            last
-#                unless length($Line);
-#
-#            $Device->{IP} = $1
-#                if $Line =~ /^\s*static\s*ip_address=(\d*\.\d*\.\d*\.\d*\/\d*)/;
-#
-#            $Device->{Router} = $1
-#                if $Line =~ /^\s*static\s*routers=(\d*\.\d*\.\d*\.\d*)/;
-#
-#            if( $Line =~ /^\s*static\s*domain_name_servers=(\d*\.\d*\.\d*\.\d*)\s*(\d*\.\d*\.\d*\.\d*)/ ) {
-#                $Device->{DNS1} = $1;
-#                $Device->{DNS2} = $2;
-#                }
-#            }
-#        }
-#
-#    #
-#    # Statically defined if there exists an IP, Router, and at least 1 DNS specified
-#    #
-#    $Device->{Static} = ($Device->{IP}     ne undef) &&
-#                        ($Device->{Router} ne undef) &&
-#                        ($Device->{DNS1}   ne undef);
-#
-#    $Device->{Static} = 0
-#        unless $Device->{Static};               # Fix ideopathic problem in javascript
-#
-#    return $Device;
-#    }
 
 
 ########################################################################################################################
