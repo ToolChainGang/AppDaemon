@@ -22,6 +22,24 @@
 ##
 ##      where:      -v      Verbose: print out things as they happen
 ##
+##      $Config->
+##          {SysName}->'raspberrypi',
+##          {NetDevs}->[ 'eth0', 'wlan0', ... ],
+##          {  About}->[ <list of about lines>... ],
+##          {WPAInfo}->
+##              {   Valid} => 1,        # TRUE if wpa_supplicant.conf file exists
+##              {    SSID} => 'Okima',
+##              { KeyMGMT} => 'WPA-PSK',
+##              {Password} => '(something)',
+##              { Country} => 'US'
+##          {$IF}    ->                 # ie $Config->{"wlan0"}->...
+##              {Enabled}-> => 0,
+##              {   DHCP}-> => 1,
+##              { IPAddr}-> => '192.168.1.31/24',
+##              { Router}-> => '192.168.1.1',
+##              {   DNS1}-> => '1.0.0.1',
+##              {   DNS2}-> => '1.1.1.1',
+##
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -55,8 +73,6 @@ our $VERSION = 'AppDaemon2020-10-20';
 
 use JSON;
 use File::Slurp qw(read_file write_file);
-use Socket;
-use Clone 'clone';
 
 use lib "/root/AppDaemon/lib";
 
@@ -77,6 +93,14 @@ our $SERVER_PORT = 2021;
 
 our $Server;
 
+our $Config;
+
+our $SysName;
+our $NetDevs  = GetNetDevs();
+our $NEInfo   = GetNetEnable();
+our $WPAInfo  = GetWPAInfo();
+our $DHCPInfo = GetDHCPInfo();
+
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -95,20 +119,14 @@ my $Verbose = 0;
 $Verbose = 1
     if defined $ARGV[0] and $ARGV[0] eq "-v";
 
+#
+# This will serve as the "original" config for comparison when/if a new config is written.
+#
+$Config = SetupConfig();
 
-
-use Data::Dumper;
-
-my $NetDevs  = GetNetDevs();
-my $WPAInfo  = GetWPAInfo();
-my $DHCPInfo = GetDHCPInfo();
-
-print Data::Dumper->Dump([$NetDevs, $WPAInfo, $DHCPInfo], [qw(NetDevs WPAInfo DHCPInfo)]);
-
-exit(0);
-
-
-
+#use Data::Dumper;
+#print Data::Dumper->Dump([$Config],[qw(Config)]);
+#exit(0);
 
 ########################################################################################################################
 ########################################################################################################################
@@ -187,8 +205,7 @@ sub WebRequest {
         $Request->{Error} = "No error.";
         Message("ConfigServer: GetConfig()")
             if $Verbose;
-        GetConfig($Request,$Verbose);
-        $Conn->{OrigState} = clone($Request->{State});
+        $Request->{State} = $Config;
         }
 
     #
@@ -198,28 +215,19 @@ sub WebRequest {
         $Request->{Error} = "No error.";
         Message("ConfigServer: SetConfig()")
             if $Verbose;
-        SetConfig($Request->{State},$Conn->{OrigState},$Verbose);
+        SetConfig($Request->{State},$Config,$Verbose);
         }
 
     #
-    # GetNetworks - Return list of networks
+    # GetWifiList - Return list of Wifi networks
     #
-    elsif( $Request->{Type} eq "GetNetworks" ) {
-        Message("ConfigServer: GetNetworks()")
+    elsif( $Request->{Type} eq "GetWifiList" ) {
+        Message("ConfigServer: GetWifiList()")
             if $Verbose;
         $Request->{Error} = "No error.";
         $Request->{State} = GetIWList();
-        }
-
-    #
-    # UseWifi - Use the selected wifi/password
-    #
-    elsif( $Request->{Type} eq "UseWifi" ) {
-        my $SSID     = $Request->{Arg1};
-        my $Password = $Request->{Arg2};
-        Message("ConfigServer: UseWifi($SSID,$Password)")
-            if $Verbose;
-        $Request->{Error} = UseWifi($SSID,$Password);
+#use Data::Dumper;
+#print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
         }
 
     #
@@ -240,80 +248,34 @@ sub WebRequest {
 ########################################################################################################################
 ########################################################################################################################
 ##
-## GetConfig - Read (and return) configuration info for system
+## SetupConfig - Set up a local config struct with all the information the web page needs.
 ##
-## Inputs:      Server request packet
-##              TRUE if verbose mode
+## Inputs:      None.
 ##
-## Outputs:     None
+## Outputs:     Config struct.
 ##
-sub GetConfig {
-    my $Request = shift;
-    my $Verbose = shift;
+sub SetupConfig {
+    my $Config;
 
-    my $State;
+    #
+    # SysName
+    #
+    $SysName = `cat /etc/hostname | tr -d " \t\n\r"`;
+    $SysName = inet_ntoa(scalar gethostbyname('localhost'))
+        unless length($SysName) and $SysName ne "";
 
-    $State->{WifiPage}     = {};
-    $State->{SysNamePage}  = {};
-    $State->{WLanPage}     = {};
-    $State->{ELanPage}     = {};
-    $State->{SharingPage}  = {};
-    $State->{AboutPage}    = [];
+    $Config->{SysName} = $SysName;
 
-    #################################################
     #
-    # "SysNamePage" page has system information
-    #
-    my $SysName = `cat /etc/hostname | tr -d " \t\n\r"`;
-       $SysName = inet_ntoa(scalar gethostbyname('localhost'))
-            unless length($SysName) and $SysName ne "";
-
-    $State->{SysNamePage}{Name} = $SysName;
-
-    Message("ConfigServer: GetConfig(SysName  ) => $State->{SysNamePage}{Name}")
-            if $Verbose;
-
-    #################################################
-    #
-    # Wifi page has the SSID and password
-    #
-    # network={
-    #     ssid="$SSID"
-    #     psk="$Password"
-    #     }
-    #
-    our $ConfFile = "/etc/wpa_supplicant/wpa_supplicant.conf";
-
-    $State->{SSIDPage}{    SSID} = `grep ssid $ConfFile`;
-    $State->{SSIDPage}{Password} = `grep psk $ConfFile`;
-    $State->{SSIDPage}{    SSID} =~ s/^.*ssid=\"(.+)\".*$/$1/;
-    $State->{SSIDPage}{Password} =~ s/^.*psk=\"(.+)\".*$/$1/;
-    chomp $State->{SSIDPage}{    SSID};
-    chomp $State->{SSIDPage}{Password};
-
-    #################################################
-    #
-    # "WLanPage" has network device info
-    #
-#    $State->{WLanPage} = ParseDHCP("wlan0");
-
-    #################################################
-    #
-    # "ELanPage" has network device info
-    #
-#    $State->{ELanPage} = ParseDHCP("eth0");
-
-    #################################################
-    #
-    # "AboutPage" has system information
+    # About
     #
     my @Info = `hostnamectl`;
     chomp @Info;
 
-    push @{$State->{AboutPage}}, $Info[0];        # "   Static hostname: raspberrypi"
-    push @{$State->{AboutPage}}, $Info[4];        # "  Operating System: Raspbian GNU/Linux 10 (buster)"
-    push @{$State->{AboutPage}}, $Info[5];        # "            Kernel: Linux 5.4.51-v7l+"
-    push @{$State->{AboutPage}}, $Info[6];        # "      Architecture: arm"
+    push @{$Config->{About}}, $Info[0];        # "   Static hostname: raspberrypi"
+    push @{$Config->{About}}, $Info[4];        # "  Operating System: Raspbian GNU/Linux 10 (buster)"
+    push @{$Config->{About}}, $Info[5];        # "            Kernel: Linux 5.4.51-v7l+"
+    push @{$Config->{About}}, $Info[6];        # "      Architecture: arm"
 
     foreach my $Line (read_file("../etc/about")) {
         chomp $Line;
@@ -321,15 +283,52 @@ sub GetConfig {
         next
             if substr($Line,0,1) eq "#";
 
-        push @{$State->{AboutPage}}, $Line        # Product application info
+        push @{$Config->{About}}, $Line        # Product application info
         }        
 
-    if( $Verbose ) {
-        Message("ConfigServer: GetConfig(AboutPage) => $_")
-            foreach @{$State->{AboutPage}};
+    #
+    # Don't pass the existing WiFi password around
+    #
+    $Config->{WPAInfo} = $WPAInfo;
+    $Config->{WPAInfo}{Password} = "(something)";
+
+    #
+    # Parse out some of the net info for easier access by the server
+    #
+    foreach my $IF (@{$NetDevs}) {
+        next
+            if $IF eq "lo";
+
+        push @{$Config->{NetDevs}},$IF;
+
+        #
+        # Set up defaults so that the server doesn't have to deal with missing info
+        #
+        $Config->{$IF}{Enabled} = 1;
+        $Config->{$IF}{ IPAddr} = "";
+        $Config->{$IF}{ Router} = "";
+        $Config->{$IF}{   DNS1} = "";
+        $Config->{$IF}{   DNS2} = "";
+
+        $Config->{$IF}{Enabled} = $NEInfo->{$IF}
+            if defined $NEInfo->{$IF};
+
+        $Config->{$IF}{ IPAddr} = $DHCPInfo->{$IF}{IPAddr}
+            if defined $DHCPInfo->{$IF}{IPAddr};
+        $Config->{$IF}{ Router} = $DHCPInfo->{$IF}{Router}
+            if defined $DHCPInfo->{$IF}{Router};
+        $Config->{$IF}{   DNS1} = $DHCPInfo->{$IF}{DNS1}
+            if defined $DHCPInfo->{$IF}{DNS1};
+        $Config->{$IF}{   DNS2} = $DHCPInfo->{$IF}{DNS2}
+            if defined $DHCPInfo->{$IF}{DNS2};
+
+        $Config->{$IF}{   DHCP} = 1;
+        $Config->{$IF}{   DHCP} = 0
+            if defined $Config->{$IF}{ IPAddr} and
+               length  $Config->{$IF}{ IPAddr};
         }
 
-    $Request->{State} = $State;
+    return $Config;
     }
 
 

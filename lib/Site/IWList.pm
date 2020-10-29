@@ -231,7 +231,12 @@ sub GetIWList {
 
             if( $Line =~ "ESSID" ) {
                 $Line =~ /ESSID:"(.+)"$/;
-                $List->{$IF}[$CN]{SSID} = $1 // "--none--";
+                #
+                # Ignore SSIDs that are string of NUL bytes
+                #
+                my $SSID = $1 // "--none--";
+                $SSID =~ s/'\0'//g;
+                $List->{$IF}[$CN]{SSID} = $SSID;
 #print "     SSID: $List->{$IF}[$CN]{SSID}\n";
                 next;
                 }

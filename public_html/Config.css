@@ -28,6 +28,14 @@ body {
     -moz-border-radius: 15px;
     }
 
+.SSIDButton { 
+    max-height:     60px;
+    border:         2px solid black;
+    border-radius:  15px;
+    float:          right;
+    -moz-border-radius: 15px;
+    }
+
 .AboutLines {
     padding:        0;
     border:         0;
@@ -35,8 +43,12 @@ body {
     font-size:      150%;
     }
 
-.WifiText { 
-    color:          orange;
+.WifiText, .SysName, .WlanName, .IP {
+    color:          brown;
+    }
+
+input:disabled {
+    background:     silver;
     }
 
 input {

@@ -21,19 +21,32 @@
 ##
 ##      GetNetDevs()->[]    Return an array of network device names in the system (ie: [0]->"wlan0" )
 ##
-##      GetWPAInfo()->      Return array of WPA info
-##          ->{SSID}            SSID of WiFi to connect
-##          ->{KeyMgmt}         Key mgmt type
-##          ->{Password}        Password to use with connection
-##
-##      SetDHCPInfo()->      Return array of interface specifics from DHCPCD.conf
+##      GetNetEnable()->[]  Return array if enable/disable specifics from the netenable file
 ##          ->{Lines}           Lines from file, not concerning interface info
-##          ->{IF}              Lines specific to one interface
-##          ->{IF}{Lines}           Lines specific to the interface (all of them)
-##          ->{IF}{IPAddr}          Static IP address of interface
-##          ->{IF}{Router}          Static router     of interface
-##          ->{IF}{DNS1}            Static 1st DNS to use
-##          ->{IF}{DNS2}            Static 2nd DNS to use
+##          ->{$IF}             Points to interfaces entry for interface
+##          ->{Interfaces}[]    List of interfaces seen
+##
+##      SetNetEnable($Info) Write new netenable info with new values
+##
+##      GetWPAInfo()->      Return array of WPA info
+##          ->{Valid}           TRUE if WPA info file found
+##          ->{SSID}            SSID of WiFi to connect
+##          ->{KeyMgmt}         Key mgmt type         (ie: "WPA-PSK")
+##          ->{Password}        Password to use with connection
+##          ->{ Country}        Country code for Wifi (ie: "us")
+##
+##      SetWPAInfo($Info)   Write new WPA info with new values
+##
+##      GetDHCPInfo()->      Return array of interface specifics from DHCPCD.conf
+##          ->{Lines}           Lines from file, not concerning interface info
+##          ->{$IF}             Points to interfaces entry for interface
+##          ->{Interfaces}[]    List of interfaces seen
+##              ->{Name}            Name of interface (ie: "wlan0")
+##              ->{Lines}[]         Lines specific to the interface (all of them)
+##              ->{IPAddr}          Static IP address of interface
+##              ->{Router}          Static router     of interface
+##              ->{DNS1}            Static 1st DNS to use
+##              ->{DNS2}            Static 2nd DNS to use
 ##    
 ########################################################################################################################
 ########################################################################################################################
@@ -70,7 +83,10 @@ use Carp;
 use File::Slurp qw(read_file write_file);
 
 our @EXPORT  = qw(&GetNetDevs
+                  &GetNetEnable
+                  &SetNetEnable
                   &GetWPAInfo
+                  &SetWPAInfo
                   &GetDHCPInfo
                   );          # Export by default
 
@@ -84,6 +100,7 @@ our @EXPORT  = qw(&GetNetDevs
 
 our $DHCPConfigFile = "/etc/dhcpcd.conf";
 our $WPAConfigFile  = "/etc/wpa_supplicant/wpa_supplicant.conf";
+our $NEConfigFile   = "..//etc/netenable";
 
 ########################################################################################################################
 ########################################################################################################################
@@ -154,15 +171,56 @@ sub GetWPAInfo {
     $WPAInfo->{    SSID} = `grep ssid     $WPAConfigFile`;
     $WPAInfo->{Password} = `grep psk      $WPAConfigFile`;
     $WPAInfo->{ KeyMGMT} = `grep key_mgmt $WPAConfigFile`;
+    $WPAInfo->{ Country} = `grep country  $WPAConfigFile`;
     
     $WPAInfo->{    SSID} =~ s/^.*ssid=\"(.+)\".*/$1/;
     $WPAInfo->{Password} =~ s/^.*psk=\"(.+)\".*/$1/;
     $WPAInfo->{ KeyMGMT} =~ s/^.*key_mgmt=(.+)\s/$1/;
+    $WPAInfo->{ Country} =~ s/^.*country=(.+)\s/$1/;
     chomp $WPAInfo->{    SSID};
     chomp $WPAInfo->{Password};
     chomp $WPAInfo->{ KeyMGMT};
+    chomp $WPAInfo->{ Country};
+
+    $WPAInfo->{Valid} = 0;
+    $WPAInfo->{Valid} = 1
+        if defined $WPAInfo->{SSID} and
+           length  $WPAInfo->{SSID};
 
     return $WPAInfo;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# SetWPAInfo - Write wpa_supplicant info
+#
+# Inputs:   [Ref to] struct of WPA supplicant info
+#
+# Outputs:  None.
+#
+# NOTE: This function sets a SINGLE set of wireless credentials, and uses the same method
+#         as raspi-config. If your application needs multiple sets, then this method is
+#         not appropriate.
+#
+sub SetWPAInfo {
+    my $WPAInfo = shift;
+
+my $wpa_text = <<"END_WPA";
+
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=$WPAInfo->{Country}
+
+network={
+	ssid="$WPAInfo->{SSID}"
+	psk="$WPAInfo->{Password}"
+    key_mgmt=$WPAInfo->{KeyMGMT}
+    }
+END_WPA
+
+    write_file($WPAConfigFile,$wpa_text);
     }
 
 
@@ -179,10 +237,9 @@ sub GetDHCPInfo {
     my $State     = "START";
     my $Interface = "";
 
-    my $DHCPInfo  = { Lines => [] };
-
+    my $DHCPInfo  = { Lines => [], Interfaces => [] };
     my @DHCPLines = eval{read_file($DHCPConfigFile)}    # Catches/avoids Croak() in lib function
-        or die "GetDHCPInfo: Cannot read $DHCPConfigFile ($!)";
+        or return $DHCPInfo;
 
     foreach my $Line (@DHCPLines) {
 
@@ -212,8 +269,9 @@ sub GetDHCPInfo {
             my ($Unused,$IF) = split /\s/,$Line;
 
             $Interface = $IF;
-            $DHCPInfo->{$Interface} = {};
-            push @{$DHCPInfo->{$Interface}{Lines}},$Line;
+            push @{$DHCPInfo->{Interfaces}},{ Name => $IF, Lines => [] };
+            push @{$DHCPInfo->{Interfaces}[-1]{Lines}},$Line;
+            $DHCPInfo->{$IF} = $DHCPInfo->{Interfaces}[-1];
             $State = "IF";
 #print "DHCPInfo[START]: Interface $IF\n";
             next;
@@ -238,22 +296,98 @@ sub GetDHCPInfo {
 
 #print "DHCPInfo[IF]: $Line\n";
 
-            push @{$DHCPInfo->{$Interface}{Lines}},$Line;
+            push @{$DHCPInfo->{Interfaces}[-1]{Lines}},$Line;
 
-            $DHCPInfo->{$Interface}{IPAddr} = $1
+            $DHCPInfo->{Interfaces}[-1]{IPAddr} = $1
                 if $Line =~ /^\s*static\s*ip_address=(\d*\.\d*\.\d*\.\d*\/\d*)/;
 
-            $DHCPInfo->{$Interface}{Router} = $1
+            $DHCPInfo->{Interfaces}[-1]{Router} = $1
                 if $Line =~ /^\s*static\s*routers=(\d*\.\d*\.\d*\.\d*)/;
 
-            if( $Line =~ /^\s*static\s*domain_name_servers=(\d*\.\d*\.\d*\.\d*)\s*(\d*\.\d*\.\d*\.\d*)/ ) {
-                $DHCPInfo->{$Interface}{DNS1} = $1;
-                $DHCPInfo->{$Interface}{DNS2} = $2;
+            if( $Line =~ /^\s*static\s*domain_name_servers\s*=\s*(\d*\.\d*\.\d*\.\d*)\s*(\d*\.\d*\.\d*\.\d*)/ ) {
+                $DHCPInfo->{Interfaces}[-1]{DNS1} = $1;
+                $DHCPInfo->{Interfaces}[-1]{DNS2} = $2;
                 }
             }
         }
 
     return $DHCPInfo;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# SetDHCPCD - Set DHCPCD information
+#
+# Inputs:   Hash of network data
+#
+# Outputs:  None.
+#
+sub SetDHCPInfo {
+    my $DHCPInfo = shift;
+
+    #
+    # Write out the initial lines (mostly comments, and some non-interface flags)
+    #
+    write_file($WPAConfigFile,$DHCPInfo->{Lines});
+
+    #
+    # For each interface write out the new lines, but with changed information
+    #
+    foreach my $Interface (@{$DHCPInfo->{Interfaces}}) {    
+        write_file($WPAConfigFile,$Interface->{Lines});
+        }
+
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# GetNetEnable - Return parsed contents of netenable file
+#
+# Inputs:   None.
+#
+# Outputs:  Hash of network data
+#
+sub GetNetEnable {
+
+    my $NEInfo  = { Lines => [], Interfaces => [] };
+    my @NELines = eval{read_file($NEConfigFile)}    # Catches/avoids Croak() in lib function
+        or return $NEInfo;
+
+    foreach my $Line (@NELines) {
+
+        chomp $Line;
+
+        push @{$NEInfo->{Lines}},$Line;
+
+        next
+            if $Line =~ '^\s*#';
+
+        next
+            if $Line =~ '^\s*$';
+
+        #
+        # Anything that's not an interface flag is considered a generic "line", and goes
+        #   in the generic section.
+        #
+        next
+            unless $Line =~ '^(.*):\s*(enable|disable)';
+
+        #
+        # When an interface flag is seen, parse out the interface and flag
+        #
+        my $IF     = $1;            # (Set from previous match)
+        my $Enable = $2;
+
+        push @{$NEInfo->{Interfaces}},{ Name => $IF, Enabled => lc($Enable) eq "enable" ? 1 : 0};
+        $NEInfo->{$IF} = $NEInfo->{Interfaces}[-1]->{Enabled};
+#print "NEInfo: Interface $IF is $Enable\n";
+        }
+
+    return $NEInfo;
     }
 
 

@@ -22,12 +22,11 @@
         <tr><td style="width: 20%"></td><td style="width: 60%">
         <h1>Configure system: <span class="SysName"></span></h1>
         <table id="TOCTable">
-            <tr><td><img class="NavButton" src="images/Wifi.png"    title="Wifi"            onclick=GotoPage("ScanningPage") /></td><td><h2>Wifi        </h2></td></tr>
-            <tr><td><img class="NavButton" src="images/SysName.png" title="System name"     onclick=GotoPage("SysNamePage")  /></td><td><h2>System Name </h2></td></tr>
-            <tr><td><img class="NavButton" src="images/Wlan.png"    title="Wireless Net"    onclick=GotoPage("WLanPage")     /></td><td><h2>Wireless Net</h2></td></tr>
-            <tr><td><img class="NavButton" src="images/Ether.png"   title="Wired Net"       onclick=GotoPage("ELanPage")     /></td><td><h2>Wired Net   </h2></td></tr>
-            <tr><td><img class="NavButton" src="images/Sharing.png" title="Network"         onclick=GotoPage("SharingPage")  /></td><td><h2>Sharing     </h2></td></tr>
-            <tr><td><img class="NavButton" src="images/About.png"   title="About"           onclick=GotoPage("AboutPage")    /></td><td><h2>About       </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Wifi.png"    title="Wifi"        onclick=GotoPage("ScanningPage") /></td><td><h2>Wifi        </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/SysName.png" title="System name" onclick=GotoPage("SysNamePage")  /></td><td><h2>System Name </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Network.png" title="Network"     onclick=GotoPage("NetworkPage")  /></td><td><h2>Networking  </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/Sharing.png" title="Sharing"     onclick=GotoPage("SharingPage")  /></td><td><h2>Sharing     </h2></td></tr>
+            <tr><td><img class="NavButton" src="images/About.png"   title="About"       onclick=GotoPage("AboutPage")    /></td><td><h2>About       </h2></td></tr>
             <tr><td><h2>&nbsp;</h2></td></tr>
             <tr><td><img class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   /></td><td><h2>Review and save </h2></td></tr>
             </table>
@@ -40,63 +39,62 @@
 
 <div id="SSIDPage" class="PageDiv">
 
-    <h1>Currently using: <span id="CurrentSSID"></span> with <span id="SSIDNO">no </span>password.</h1>
+    <h1>Currently using: <span class="WifiText" id="CurrentSSID"></span></h1>
     <h1>Which Wifi would you like to use?</h1>
 
     <center><table id="WifiNames"></table>
         </center>
 
-    <table id="NavTable">
-        <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=ChooseSSID()    /></td><td><h2>Back</h2></td></tr>
-        </table>
-    </div>
-
-<div id="PasswordPage" class="PageDiv">
-    <h1>Enter password for Wifi: <span id="EnterWifi" class="WifiText"></span></h1>
-    <center>
-        <input  id="Password" name="password" required>
-        </center>
+    <div id="PasswordField" style="display: none">
+        <h1>Enter password for Wifi: <span id="EnterWifi" class="WifiText"></span>, and press enter</h1>
+        <center>
+            <input id="Password" type="text" onKeyPress="EnterPassword(event)" \> 
+            </center>
+        </div>
 
     <table id="NavTable">
         <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=EnterPassword()    /></td><td><h2>Back</h2></td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 
 <div id="SysNamePage" class="PageDiv">
     <center>
         <h1>Enter new system name:</h1>
-        <input id="SysName" name="password">
+        <input id="SysName" class="SysName" name="SysName" onKeyPress="EnterSysName(event)" \>
         </center>
-
-        Valid name contain a-z, A-Z, 0-9, hyphen and underscore, and cannot begin with a hyphen.
+    <center>
+        <br />
+        Valid names use a-z, A-Z, 0-9, hyphen and<br />underscore, and cannot begin or end with a hyphen.
+        </center>
+    <center>
+        <br />
+        A new name will take effect after reboot.
+        </center>
     <table id="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 
-<div id="WLanPage" class="PageDiv">
-    <h1>Wireless network:</h1>
+<div id="NetworkPage" class="PageDiv">
+    <h1>Network devices:</h1>
 
-    <table id="NavTable">
-        <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+    <table id="IFTable" summary="Network devices">
         </table>
-    </div>
-
-<div id="ELanPage" class="PageDiv">
-    <h1>Ethernet network:</h1>
 
     <table id="NavTable">
         <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=UpdateIF()             /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 
 <div id="SharingPage" class="PageDiv">
     <h1>File sharing:</h1>
+
+    <center>
+        Not yet implemented
+        </center>
 
     <table id="NavTable">
         <tr><td>&nbsp;</td></tr>
@@ -106,7 +104,7 @@
 
 <div id="AboutPage" class="PageDiv">
     <table id="InfoLines" summary="System Configuration">
-        <tr><td style="width: 10%"><h1>About:</h1></td><td>&nbsp;</td></tr>
+        <tr><td style="width: 10%"><h1>About:&nbsp;</h1></td><td><h1><span class="SysName"></span></h1></td></tr>
         </table>
 
     <table id="NavTable">
