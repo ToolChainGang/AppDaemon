@@ -1,0 +1,12 @@
+#
+# Interfaces with "enable" or "disable" are listed here.
+#   
+# Interface will be configured by "ifconfig $IF up/down"
+#   as appropriate.
+#
+# Example:
+#
+#   wlan0:  enable
+#   eth0:   disable
+#
+wlan0:  enable
