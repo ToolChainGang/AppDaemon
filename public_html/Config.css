@@ -24,7 +24,6 @@ body {
     max-height:     60px;
     border:         2px solid black;
     border-radius:  15px;
-    float:          right;
     -moz-border-radius: 15px;
     }
 
@@ -43,7 +42,7 @@ body {
     font-size:      150%;
     }
 
-.WifiText, .SysName, .WlanName, .IP {
+.WifiText, .SysName, .WlanName, .IP, .Brown {
     color:          brown;
     }
 

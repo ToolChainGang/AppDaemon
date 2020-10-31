@@ -38,6 +38,7 @@
 //              { KeyMGMT}->'WPA-PSK',
 //              {Password}->'(something)',
 //              { Country}->'US'
+//              { Changed}-> 1          // Set by config page if user changes something
 //          {$IF}    ->                 // ex: $Config->{"wlan0"}->
 //              {Enabled}->0,
 //              {   DHCP}->1,
@@ -60,6 +61,7 @@
     var Config;
     var OrigConfig;
     var WifiList;
+    var Wifi;           // Chosen Wifi, from list
 
     var NameInput;
 
@@ -156,6 +158,7 @@
                 for (i = 0; i < SysNameElements.length; i++) {
                     SysNameElements[i].innerHTML = OrigConfig.SysName;
                     };
+                Config.WPAInfo.Changed = 0;                         // User hasn't changed, yet
                 GotoPage("TOCPage");
                 return;
                 }
@@ -292,6 +295,7 @@
         if( characterCode == 13 ) {     // Enter
             Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
             Config.WPAInfo.Password = document.getElementById("Password").value;
+            Config.WPAInfo.Changed  = 1;
             GotoPage("TOCPage");
             }
         }
@@ -398,7 +402,7 @@
         Config.About.forEach(function (InfoLine) { 
             var FmtLine = InfoLine.replace(": ",":<b> ") + "</b>";
            
-            InfoLines.innerHTML += "<tr><td></td><td><pre class=\"AboutLines\" >" + FmtLine + "</pre></td></tr>";
+            InfoLines.innerHTML += '<tr><td></td><td><pre class="AboutLines" >' + FmtLine + '</pre></td></tr>';
             });
         }
 
@@ -406,7 +410,74 @@
     //
     // PopulateReviewPage - Populate the directory page as needed
     //
-    function PopulateReviewPage() {}
+    function PopulateReviewPage() {
+        var ReviewLines = document.getElementById("ReviewLines");
+        ReviewLines.innerHTML = "";
+        var TableText;
+
+        //
+        // SysName
+        //
+        if( Config.SysName == OrigConfig.SysName ) { AddReviewLine("System Name: "    ,"(no change)" ); }
+        else                                       { AddReviewLine("New system Name: ",Config.SysName); }
+
+        //
+        // Wifi SSID and password
+        //
+        if( Config.WPAInfo.Changed ) {
+            TableText = Config.WPAInfo.SSID;
+            if( Wifi.Encryption ) {
+                TableText += "with password";
+                }
+            else {
+                TableText += "with no password";
+                }
+            }
+        else {
+            TableText = "(no change)";
+            }
+        AddReviewLine("Wifi: ",TableText);
+
+        //
+        // Networking
+        //
+        Config.NetDevs.forEach(function (IF) { 
+            if( !Config[IF].Enabled ) {
+                TableText = "disabled";
+                }
+            else {
+                TableText = "enabled";
+                if( Config[IF].DHCP ) {
+                    TableText += ", using  DHCP";
+                    }
+                else {
+                    TableText += ", static IP";
+                    }
+                }
+            AddReviewLine(IF + ": ",TableText);
+
+            if( Config[IF].Enabled && !Config[IF].DHCP ) {
+                AddReviewLine("","IPAddr: " + Config[IF].IPAddr);
+                AddReviewLine("","Router: " + Config[IF].Router);
+                AddReviewLine("","DNS1:   " + Config[IF].DNS2);
+                AddReviewLine("","DNS2:   " + Config[IF].DNS1);
+                }
+            });
+
+        //
+        // Nav buttons at the end
+        //
+        var ReviewNav = document.getElementById("ReviewNav").innerHTML;
+        ReviewLines.innerHTML += ReviewNav;
+        }
+
+    function AddReviewLine(Label,Text) {
+
+        ReviewLines.innerHTML += '<tr><td style="width: 20%">&nbsp;</td>' +
+                                 '<td><pre class="AboutLines" >'    + Label +     '</pre></td>' +
+                                 '<td><pre class="AboutLines Brown" ><b>' + Text  + '</b></pre></td>' +
+                                 '</tr>';
+        }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //

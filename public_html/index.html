@@ -52,7 +52,7 @@
             </center>
         </div>
 
-    <table id="NavTable">
+    <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
@@ -71,7 +71,7 @@
         <br />
         A new name will take effect after reboot.
         </center>
-    <table id="NavTable">
+    <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
@@ -83,7 +83,7 @@
     <table id="IFTable" summary="Network devices">
         </table>
 
-    <table id="NavTable">
+    <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=UpdateIF()             /></td><td><h2>Back</h2></td></tr>
         </table>
@@ -96,7 +96,7 @@
         Not yet implemented
         </center>
 
-    <table id="NavTable">
+    <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
@@ -107,7 +107,7 @@
         <tr><td style="width: 10%"><h1>About:&nbsp;</h1></td><td><h1><span class="SysName"></span></h1></td></tr>
         </table>
 
-    <table id="NavTable">
+    <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
         </table>
@@ -115,28 +115,31 @@
     </div>
 
 <div id="ReviewPage" class="PageDiv">
-    <center>
-    <h2><span class="SysName"></span> will connect to:</h2>
-    <h3 id="WifiSSID"     class="WifiText"></h2>
-    <h2 id="UsingPassword"                  >using password:</h2>
-    <h2 id="UsingNoPassword"                >using no password</h2>
-    <h3 id="WifiPassword" class="WifiText"></h2>
-    <h3> </h3>
-    <h3>These changes will take effect at next reboot</h3>
-    <h3> </h3>
-    <button class="NavButton" onclick=GotoPage('EpiloguePage')  >Reboot now</button>
-    </center>
-
-    <table id="NavTable">
-        <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+    <table id="ReviewHeader" summary="Review Configuration">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>New Settings for:&nbsp;</h1></td><td><h1><span class="SysName"></span></h1></td></tr>
         </table>
 
+    <table id="ReviewLines" summary="Review Configuration">
+        </table>
+
+    <table id="ReviewNav" style="display:none;">
+        <tr><td style="width: 10%">&nbsp;</td><td colspan="2"><h3>Changes will not take effect unless saved&#x21b4;</h3></td><td>&nbsp;</td></tr>
+        <tr><td colspan="2">
+            <table class="NavTable">
+                <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+                </table>
+            </td>
+            <td colspan="2">
+            <table style="width: 100%;">
+                <tr><td><h2>Save and reboot </h2></td><td><img class="NavButton" src="images/Save.png" title="Save and reboot" onclick=GotoPage("EpiloguePage") /></td></tr>
+                </table>
+            </td>
+            </tr>
+        </table>
     </div>
 
 <div id="EpiloguePage" class="PageDiv">
-    <center><h2><span class="plogo"><span class="plp">p</span><span class="pli">I</span><span class="plv">V</span><span class="plo">O</span><span class="plt">T</span></span>
-    has returned to Wifi mode.</h2></center>
+    <center><h2>Leaving config mode for reboot.</h2></center>
     </div>
 
     </body>
