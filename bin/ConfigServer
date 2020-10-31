@@ -145,15 +145,15 @@ exit(1);
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## ConnectionRequest - Process incoming connection requests
-##
-## Inputs:      Connection
-##              Server
-##
-## Outputs:     TRUE  if should accept this request
-##              FALSE if should reject this request
-##
+#
+# ConnectionRequest - Process incoming connection requests
+#
+# Inputs:      Connection
+#              Server
+#
+# Outputs:     TRUE  if should accept this request
+#              FALSE if should reject this request
+#
 sub ConnectionRequest {
 
     kill "USR1",getppid         # Inform server of activity
@@ -165,15 +165,15 @@ sub ConnectionRequest {
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## WebRequest - Process incoming web page requests
-##
-## Inputs:      JSON encoded struct of request
-##              Connection
-##              Server
-##
-## Outputs:     None
-##
+# 
+#  WebRequest - Process incoming web page requests
+# 
+#  Inputs:      JSON encoded struct of request
+#               Connection
+#               Server
+# 
+#  Outputs:     None
+# 
 sub WebRequest {
     my $JSONText = shift // "";
     my $Conn     = shift;
@@ -247,13 +247,13 @@ sub WebRequest {
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## SetupConfig - Set up a local config struct with all the information the web page needs.
-##
-## Inputs:      None.
-##
-## Outputs:     Config struct.
-##
+#
+# SetupConfig - Set up a local config struct with all the information the web page needs.
+#
+# Inputs:      None.
+#
+# Outputs:     Config struct.
+#
 sub SetupConfig {
     my $Config;
 
@@ -295,7 +295,7 @@ sub SetupConfig {
     #
     # Parse out some of the net info for easier access by the server
     #
-    foreach my $IF (@{$NetDevs}) {
+    foreach my $IF (reverse sort @{$NetDevs}) {
         next
             if $IF eq "lo";
 
@@ -334,19 +334,25 @@ sub SetupConfig {
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## SetConfig - Set the specified config
-##
-## Inputs:      Requested config state
-##              Original  config state (for comparison)
-##              TRUE if verbose mode
-##
-## Outputs:     None
-##
+#
+# SetConfig - Set the specified config
+#
+# Inputs:      Requested config state
+#              Original  config state (for comparison)
+#              TRUE if verbose mode
+#
+# Outputs:     None
+#
 sub SetConfig {
     my $NewState  = shift;
     my $OrigState = shift;
     my $Verbose  = shift;
+
+    #
+    # Wifi credentials
+    #
+    SetWPAInfo($NewState->{WPAInfo});
+
 
 
     }
@@ -354,14 +360,14 @@ sub SetConfig {
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## UseWifi - Set the system to use the selected wifi
-##
-## Inputs:      Name of wifi to use
-##              Password to use
-##
-## Outputs:     None
-##
+#
+# UseWifi - Set the system to use the selected wifi
+#
+# Inputs:      Name of wifi to use
+#              Password to use
+#
+# Outputs:     None
+#
 sub UseWifi {
     my $SSID     = shift;
     my $Password = shift;

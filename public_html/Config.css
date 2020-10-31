@@ -58,3 +58,9 @@ input {
     padding-left:   0px;
     font-size:      150%;
     }
+
+.Arrow {
+    position:       relative;
+    top:            6px;
+    }
+

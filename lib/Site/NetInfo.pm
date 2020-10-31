@@ -88,6 +88,7 @@ our @EXPORT  = qw(&GetNetDevs
                   &GetWPAInfo
                   &SetWPAInfo
                   &GetDHCPInfo
+                  &SetDHCPInfo
                   );          # Export by default
 
 ########################################################################################################################
@@ -136,6 +137,9 @@ sub GetNetDevs {
 
         push @{$NetDevs},$Device;
         }
+
+#use Data::Dumper;
+#print Data::Dumper->Dump([$NetDevs],[qw(NetDevs)]);
 
     return $NetDevs;
     }
@@ -207,6 +211,9 @@ sub GetWPAInfo {
 sub SetWPAInfo {
     my $WPAInfo = shift;
 
+    return
+        unless $WPAInfo->{Valid};
+
 my $wpa_text = <<"END_WPA";
 
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
@@ -220,6 +227,9 @@ network={
     }
 END_WPA
 
+#use Data::Dumper;
+#print Data::Dumper->Dump([$WPAText],[qw(WPAText)]);
+
     write_file($WPAConfigFile,$wpa_text);
     }
 
@@ -227,7 +237,7 @@ END_WPA
 ########################################################################################################################
 ########################################################################################################################
 #
-# GetDHCPCD - Return DHCPCD information
+# GetDHCPInfo - Return DHCPCD.conf information
 #
 # Inputs:   None.
 #
@@ -311,6 +321,22 @@ sub GetDHCPInfo {
             }
         }
 
+    #
+    # Ensure each device has an entry
+    #
+    my $NetDevs = GetNetDevs();
+    foreach my $IF (@{$NetDevs}) {
+
+        next
+            unless defined $DHCPInfo->{$IF};
+
+        push @{$DHCPInfo->{Interfaces}},{ Name => $IF, Lines => [], IPAddr => "", Router => "", DNS1 => "", DNS2 => "" };
+        $DHCPInfo->{$IF} = $DHCPInfo->{Interfaces}[-1];
+        }
+
+#use Data::Dumper;
+#print Data::Dumper->Dump([$DHCPInfo],[qw(DHCPInfo)]);
+
     return $DHCPInfo;
     }
 
@@ -318,7 +344,7 @@ sub GetDHCPInfo {
 ########################################################################################################################
 ########################################################################################################################
 #
-# SetDHCPCD - Set DHCPCD information
+# SetDHCPInfo - Set DHCPCD.conf information
 #
 # Inputs:   Hash of network data
 #
@@ -327,18 +353,67 @@ sub GetDHCPInfo {
 sub SetDHCPInfo {
     my $DHCPInfo = shift;
 
+    my $DHCPLines = [];
+
     #
-    # Write out the initial lines (mostly comments, and some non-interface flags)
+    # Add out the initial lines (mostly comments, and some non-interface flags)
     #
-    write_file($WPAConfigFile,$DHCPInfo->{Lines});
+    # Don't forget the EOLs
+    #
+    $DHCPLines = [ map { $_ . "\n" } @{$DHCPInfo->{Lines}} ];
 
     #
     # For each interface write out the new lines, but with changed information
     #
-    foreach my $Interface (@{$DHCPInfo->{Interfaces}}) {    
-        write_file($WPAConfigFile,$Interface->{Lines});
+    foreach my $IF (@{$DHCPInfo->{Interfaces}}) {    
+        #
+        # Special case: If there are *no* lines associated with an interface, it's because
+        #   there were none in the original DHCP file.
+        #
+        # If there's now a user-requested static config, then create an initial set of lines.
+        #   This should filter unharmed through the loop below.
+        #
+        if( $IF->{Lines} == 0 and               # No existing lines for interface
+            ( length($IF->{IPAddr}) or 
+              length($IF->{Router}) or 
+              length($IF->{  DNS1}) or 
+              length($IF->{  DNS2}) ) ) {
+            push @{$IF->{Lines}},"interface $IF->{Name}";
+            push @{$IF->{Lines}},"    static ip_address=$IF->{IPAddr}";
+            push @{$IF->{Lines}},"    static routers=$IF->{Router}";
+            push @{$IF->{Lines}},"    static domain_name_servers=$IF->{DNS1} $IF->{DNS2}";
+            push @{$IF->{Lines}},"";
+            }
+
+        #
+        # Go through any existing lines the user may have, changing their configuration settings
+        #   when encountered
+        #
+        for( my $LineNo = 0; $LineNo < @{$IF->{Lines}}; $LineNo++ ) {
+
+            $IF->{Lines}[$LineNo] =~ s/$IF->{IPAddr}/$DHCPInfo->{IF}{IPAddr}/
+                if $IF->{Lines}[$LineNo] =~ /ip_address/;
+
+            $IF->{Lines}[$LineNo] =~ s/$IF->{Router}/$DHCPInfo->{IF}{Router}/
+                if $IF->{Lines}[$LineNo] =~ /routers/;
+
+            $IF->{Lines}[$LineNo] =~ s/$IF->{DNS1}/$DHCPInfo->{IF}{DNS1}/
+                if $IF->{Lines}[$LineNo] =~ /domain_name_servers/;
+
+            $IF->{Lines}[$LineNo] =~ s/$IF->{DNS2}/$DHCPInfo->{IF}{DNS2}/
+                if $IF->{Lines}[$LineNo] =~ /domain_name_servers/;
+            }
+
+        #
+        # Save the new settings. Don't forget linefeeds.
+        #
+        push @{$DHCPLines},map { $_ . "\n" } @{$IF->{Lines}};
         }
 
+#use Data::Dumper;
+#print Data::Dumper->Dump([$DHCPLines],[qw(DHCPInfo)]);
+
+    write_file($WPAConfigFile,$DHCPLines);
     }
 
 
@@ -363,31 +438,70 @@ sub GetNetEnable {
 
         push @{$NEInfo->{Lines}},$Line;
 
-        next
-            if $Line =~ '^\s*#';
-
-        next
-            if $Line =~ '^\s*$';
-
         #
-        # Anything that's not an interface flag is considered a generic "line", and goes
-        #   in the generic section.
+        # When an interface flag is seen, parse out the interface and flag
         #
         next
             unless $Line =~ '^(.*):\s*(enable|disable)';
 
-        #
-        # When an interface flag is seen, parse out the interface and flag
-        #
         my $IF     = $1;            # (Set from previous match)
         my $Enable = $2;
 
         push @{$NEInfo->{Interfaces}},{ Name => $IF, Enabled => lc($Enable) eq "enable" ? 1 : 0};
         $NEInfo->{$IF} = $NEInfo->{Interfaces}[-1]->{Enabled};
-#print "NEInfo: Interface $IF is $Enable\n";
         }
 
+    #
+    # Ensure each device has an entry
+    #
+    my $NetDevs = GetNetDevs();
+    foreach my $IF (@{$NetDevs}) {
+
+        next
+            unless defined $NEInfo->{$IF};
+
+        push @{$NEInfo->{Interfaces}},{ Name => $IF, Enabled => 1, lines => [ "$IF: enable" ]};
+        $NEInfo->{$IF} = $NEInfo->{Interfaces}[-1];
+        }
+
+#use Data::Dumper;
+#print Data::Dumper->Dump([$NEInfo],[qw(NEInfo)]);
+
     return $NEInfo;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# SetNetEnable - Set enable flags for known interfaces
+#
+# Inputs:   Hash of enable data
+#
+# Outputs:  None.
+#
+sub SetNetEnable {
+    my $EnbInfo  = shift;
+    my $EnbLines = [];
+
+    #
+    # Add out the initial lines (mostly comments, and some non-interface flags)
+    #
+    # Don't forget the EOLs
+    #
+    foreach my $Line (@{$EnbInfo->{Lines}}) {
+        foreach my $IF (@{$EnbInfo->{Interfaces}}) {
+            $Line =~ s/enable|disable/$EnbInfo->{$IF}{Enabled} ? "enable" : "disable"/
+                if $Line =~ '^(.*):\s*(enable|disable)';
+            }
+
+        push @{$EnbLines},$Line . "\n";
+        }
+
+#use Data::Dumper;
+#print Data::Dumper->Dump([$NEInfo],[qw(NEInfo)]);
+
+    write_file($NEConfigFile,$EnbLines);
     }
 
 
