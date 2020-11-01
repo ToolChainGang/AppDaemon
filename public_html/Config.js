@@ -309,7 +309,7 @@
         }
 
     //
-    // EnterSysName - Processed entered system names
+    // EnterSysName - Process "enter" in sysname field
     //
     function EnterSysName(Event) {
         var characterCode;
@@ -322,16 +322,23 @@
             }
 
         if( characterCode == 13 ) {     // Enter
-            var NewName = document.getElementById("SysName").value;
-
-            if( ! /^[a-zA-Z0-9_][a-zA-Z0-9-_][a-zA-Z0-9_]{1,61}$/.test(NewName) ) {
-                alert(NameInput.value + " is not a valid system name.");
-                return;
-                }
-
-            Config.SysName = document.getElementById("SysName").value;
-            GotoPage("TOCPage");
+            ChangeSysName();
             }
+        }
+
+    //
+    // ChangeSysName - Processed entered system names
+    //
+    function ChangeSysName(NewName) {
+        var NewName = document.getElementById("SysName").value;
+
+        if( ! /^[a-zA-Z0-9_][a-zA-Z0-9-_][a-zA-Z0-9_]{1,61}$/.test(NewName) ) {
+            alert(NameInput.value + " is not a valid system name.");
+            return;
+            }
+
+        Config.SysName = NewName;
+        GotoPage("TOCPage");
         }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -418,51 +425,65 @@
         //
         // SysName
         //
-        if( Config.SysName == OrigConfig.SysName ) { AddReviewLine("System Name: "    ,"(no change)" ); }
-        else                                       { AddReviewLine("New system Name: ",Config.SysName); }
+        if( document.getElementById("SN") != undefined ) {
+            if( Config.SysName == OrigConfig.SysName ) { AddReviewLine("System Name: "    ,"(no change)" ); }
+            else                                       { AddReviewLine("New system Name: ",Config.SysName); }
+            }
 
         //
         // Wifi SSID and password
         //
-        if( Config.WPAInfo.Changed ) {
-            TableText = Config.WPAInfo.SSID;
-            if( Wifi.Encryption ) {
-                TableText += "with password";
+        if( document.getElementById("WB") != undefined ) {
+            if( Config.WPAInfo.Changed ) {
+                TableText = Config.WPAInfo.SSID;
+                if( Wifi.Encryption ) {
+                    TableText += "with password";
+                    }
+                else {
+                    TableText += "with no password";
+                    }
                 }
             else {
-                TableText += "with no password";
+                TableText = "(no change)";
                 }
+            AddReviewLine("Wifi: ",TableText);
             }
-        else {
-            TableText = "(no change)";
-            }
-        AddReviewLine("Wifi: ",TableText);
 
         //
         // Networking
         //
-        Config.NetDevs.forEach(function (IF) { 
-            if( !Config[IF].Enabled ) {
-                TableText = "disabled";
-                }
-            else {
-                TableText = "enabled";
-                if( Config[IF].DHCP ) {
-                    TableText += ", using  DHCP";
+        if( document.getElementById("NB") != undefined ) {
+            Config.NetDevs.forEach(function (IF) { 
+                if( !Config[IF].Enabled ) {
+                    TableText = "disabled";
                     }
                 else {
-                    TableText += ", static IP";
+                    TableText = "enabled";
+                    if( Config[IF].DHCP ) {
+                        TableText += ", using  DHCP";
+                        }
+                    else {
+                        TableText += ", static IP";
+                        }
                     }
-                }
-            AddReviewLine(IF + ": ",TableText);
+                AddReviewLine(IF + ": ",TableText);
 
-            if( Config[IF].Enabled && !Config[IF].DHCP ) {
-                AddReviewLine("","IPAddr: " + Config[IF].IPAddr);
-                AddReviewLine("","Router: " + Config[IF].Router);
-                AddReviewLine("","DNS1:   " + Config[IF].DNS2);
-                AddReviewLine("","DNS2:   " + Config[IF].DNS1);
-                }
-            });
+                if( Config[IF].Enabled && !Config[IF].DHCP ) {
+                    AddReviewLine("","IPAddr: " + Config[IF].IPAddr);
+                    AddReviewLine("","Router: " + Config[IF].Router);
+                    AddReviewLine("","DNS1:   " + Config[IF].DNS2);
+                    AddReviewLine("","DNS2:   " + Config[IF].DNS1);
+                    }
+                });
+            }
+
+        //
+        // Sharing
+        //
+        if( document.getElementById("SB") != undefined ) {
+            // TBD
+
+            }
 
         //
         // Nav buttons at the end
