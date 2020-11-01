@@ -42,7 +42,7 @@ The "About" page will notice the missing button and omit the information from th
     </table>
 ```
 
-to this:
+###to this:
 
 ```
 <table id="TOCTable">
@@ -66,7 +66,7 @@ To add a new panel:
 - Add code to populate your page
 - Add code to get data from the server
 
-### Example: Adding a new page for the GPIOServer app:
+### Example: Adding a new panel for an app named "GPIOServer":
 
 In index.html, add a line to the TOC:
 
@@ -75,7 +75,7 @@ In index.html, add a line to the TOC:
     &lt;tr&gt;&lt;td&gt;&lt;img id="WB" class="NavButton" src="images/Wifi.png"    title="Wifi"        onclick=GotoPage("ScanningPage") /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;Wifi        &lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
     &lt;tr&gt;&lt;td&gt;&lt;img id="SN" class="NavButton" src="images/SysName.png" title="System name" onclick=GotoPage("SysNamePage")  /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;System Name &lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
     &lt;tr&gt;&lt;td&gt;&lt;img id="NB" class="NavButton" src="images/Network.png" title="Network"     onclick=GotoPage("NetworkPage")  /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;Networking  &lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
-<b>    &lt;tr&gt;&lt;td&gt;&lt;img id="AB" class="NavButton" src="images/GPIO.png" title="GPIO"        onclick=GotoPage("GPIOPage")     /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;GPIOs&lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;</b>
+<b>    &lt;tr&gt;&lt;td&gt;&lt;img id="AB" class="NavButton" src="images/GPIO.png"    title="GPIO"        onclick=GotoPage("GPIOPage")     /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;GPIOs&lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;</b>
     &lt;tr&gt;&lt;td&gt;&lt;img id="AB" class="NavButton" src="images/About.png"   title="About"       onclick=GotoPage("AboutPage")    /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;About       &lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
     &lt;tr&gt;&lt;td&gt;&lt;h2&gt;&nbsp;&lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
     &lt;tr&gt;&lt;td&gt;&lt;img class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   /&gt;&lt;/td&gt;&lt;td&gt;&lt;h2&gt;Review and save &lt;/h2&gt;&lt;/td&gt;&lt;/tr&gt;
@@ -114,6 +114,20 @@ In Config.js, add the page navigation:
 <b>        if( PageName == "GPIOPage"     ) { ConfigCommand("GetGPIO"); }</b>
 </code></pre>
 
+In ConfigServer, add code to retrieve the information when it arrives:
+
+<pre><code>
+    #
+    # GetGPIOList - Return list of GPIO stuff
+    #
+    elsif( $Request->{Type} eq "GetGPIOList" ) {
+        Message("ConfigServer: GetGPIOList()")
+            if $Verbose;
+        $Request->{Error} = "No error.";
+        $Request->{State} = GetGPIOList();  <b>#&lt;-- You supply this function
+        }
+</code></pre>
+
 In Config.js, add code to populate the page:
 
 <pre><code>
@@ -122,7 +136,7 @@ In Config.js, add code to populate the page:
     // PopulateGPIOPage - Populate the GPIO page as needed
     //
     function PopulateGPIOPage() {
-        <b>... Your code goes here ...</b> }
+        <b>... Your code goes here ...</b>
         }
 </code></pre>
 
@@ -138,18 +152,3 @@ In Config.js, add code to receive the new data:
         }
 </code></pre>
 
-In ConfigServer, add code to retrieve the information you need:
-
-<pre><code>
-    #
-    # GetGPIOList - Return list of GPIO stuff
-    #
-    elsif( $Request->{Type} eq "GetGPIOList" ) {
-        Message("ConfigServer: GetGPIOList()")
-            if $Verbose;
-        $Request->{Error} = "No error.";
-        $Request->{State} = GetGPIOList();  <b>#&lt;-- You supply this function
-#use Data::Dumper;
-#print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
-        }
-</code></pre>
