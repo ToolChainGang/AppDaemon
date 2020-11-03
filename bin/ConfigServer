@@ -72,6 +72,7 @@ use Carp;
 our $VERSION = 'AppDaemon2020-10-20';
 
 use JSON;
+use Data::Dumper;
 use File::Slurp qw(read_file write_file);
 
 use lib "/root/AppDaemon/lib";
@@ -96,10 +97,11 @@ our $Server;
 our $Config;
 
 our $SysName;
+
 our $NetDevs  = GetNetDevs();
-our $NEInfo   = GetNetEnable();
 our $WPAInfo  = GetWPAInfo();
 our $DHCPInfo = GetDHCPInfo();
+our $NEInfo   = GetNetEnable();
 
 ########################################################################################################################
 ########################################################################################################################
@@ -124,9 +126,8 @@ $Verbose = 1
 #
 $Config = SetupConfig();
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$Config],[qw(Config)]);
-#exit(0);
+# print Data::Dumper->Dump([$Config],[qw(Config)]);
+# exit(0);
 
 ########################################################################################################################
 ########################################################################################################################
@@ -215,7 +216,7 @@ sub WebRequest {
         $Request->{Error} = "No error.";
         Message("ConfigServer: SetConfig()")
             if $Verbose;
-        SetConfig($Request->{State},$Config,$Verbose);
+        SetConfig($Request->{Arg1},$Config,$Verbose);
         }
 
     #
@@ -226,7 +227,6 @@ sub WebRequest {
             if $Verbose;
         $Request->{Error} = "No error.";
         $Request->{State} = GetIWList();
-#use Data::Dumper;
 #print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
         }
 
@@ -295,37 +295,40 @@ sub SetupConfig {
     #
     # Parse out some of the net info for easier access by the server
     #
-    foreach my $IF (reverse sort @{$NetDevs}) {
+    foreach my $IFName (reverse sort @{$NetDevs}) {
         next
-            if $IF eq "lo";
+            if $IFName eq "lo";
 
-        push @{$Config->{NetDevs}},$IF;
+        push @{$Config->{NetDevs}},$IFName;
+        $Config->{DHCPInfo}{$IFName} = {};
+
+        my $IF = $Config->{DHCPInfo}{$IFName};
 
         #
         # Set up defaults so that the server doesn't have to deal with missing info
         #
-        $Config->{$IF}{Enabled} = 1;
-        $Config->{$IF}{ IPAddr} = "";
-        $Config->{$IF}{ Router} = "";
-        $Config->{$IF}{   DNS1} = "";
-        $Config->{$IF}{   DNS2} = "";
+        $IF->{Enabled} = 1;
+        $IF->{ IPAddr} = "";
+        $IF->{ Router} = "";
+        $IF->{   DNS1} = "";
+        $IF->{   DNS2} = "";
 
-        $Config->{$IF}{Enabled} = $NEInfo->{$IF}
-            if defined $NEInfo->{$IF};
+        $IF->{Enabled} = lc($NEInfo->{$IFName}) eq "enable" ? 1 : 0
+            if defined $NEInfo->{$IFName};
 
-        $Config->{$IF}{ IPAddr} = $DHCPInfo->{$IF}{IPAddr}
-            if defined $DHCPInfo->{$IF}{IPAddr};
-        $Config->{$IF}{ Router} = $DHCPInfo->{$IF}{Router}
-            if defined $DHCPInfo->{$IF}{Router};
-        $Config->{$IF}{   DNS1} = $DHCPInfo->{$IF}{DNS1}
-            if defined $DHCPInfo->{$IF}{DNS1};
-        $Config->{$IF}{   DNS2} = $DHCPInfo->{$IF}{DNS2}
-            if defined $DHCPInfo->{$IF}{DNS2};
+        $IF->{ IPAddr} = $DHCPInfo->{$IFName}{IPAddr}
+            if defined $DHCPInfo->{$IFName}{IPAddr};
+        $IF->{ Router} = $DHCPInfo->{$IFName}{Router}
+            if defined $DHCPInfo->{$IFName}{Router};
+        $IF->{   DNS1} = $DHCPInfo->{$IFName}{DNS1}
+            if defined $DHCPInfo->{$IFName}{DNS1};
+        $IF->{   DNS2} = $DHCPInfo->{$IFName}{DNS2}
+            if defined $DHCPInfo->{$IFName}{DNS2};
 
-        $Config->{$IF}{   DHCP} = 1;
-        $Config->{$IF}{   DHCP} = 0
-            if defined $Config->{$IF}{ IPAddr} and
-               length  $Config->{$IF}{ IPAddr};
+        $IF->{   DHCP} = 1;
+        $IF->{   DHCP} = 0
+            if defined $IF->{ IPAddr} and
+               length  $IF->{ IPAddr};
         }
 
     return $Config;
@@ -346,43 +349,23 @@ sub SetupConfig {
 sub SetConfig {
     my $NewState  = shift;
     my $OrigState = shift;
-    my $Verbose  = shift;
+    my $Verbose   = shift;
 
     #
     # Wifi credentials
     #
     SetWPAInfo($NewState->{WPAInfo});
 
+    #
+    # Net enable
+    #
+    SetNetEnable($NewState->{DHCPInfo});
 
+    #
+    # DHCP stuff
+    #
+    SetDHCPInfo($NewState->{DHCPInfo});
 
-    }
-
-
-########################################################################################################################
-########################################################################################################################
-#
-# UseWifi - Set the system to use the selected wifi
-#
-# Inputs:      Name of wifi to use
-#              Password to use
-#
-# Outputs:     None
-#
-sub UseWifi {
-    my $SSID     = shift;
-    my $Password = shift;
-
-my $wpa_text = <<"END_WPA";
-
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=US
-
-network={
-    ssid="$SSID"
-    psk="$Password"
-    }
-END_WPA
-
-#    write_file($WPAConfigFile,$wpa_text);
+    print Data::Dumper->Dump([$NewState],["NewConfig"])
+        if $Verbose;
     }

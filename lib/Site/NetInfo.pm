@@ -21,14 +21,7 @@
 ##
 ##      GetNetDevs()->[]    Return an array of network device names in the system (ie: [0]->"wlan0" )
 ##
-##      GetNetEnable()->[]  Return array if enable/disable specifics from the netenable file
-##          ->{Lines}           Lines from file, not concerning interface info
-##          ->{$IF}             Points to interfaces entry for interface
-##          ->{Interfaces}[]    List of interfaces seen
-##
-##      SetNetEnable($Info) Write new netenable info with new values
-##
-##      GetWPAInfo()->      Return array of WPA info
+##      GetWPAInfo()        Return array of WPA info
 ##          ->{Valid}           TRUE if WPA info file found
 ##          ->{SSID}            SSID of WiFi to connect
 ##          ->{KeyMgmt}         Key mgmt type         (ie: "WPA-PSK")
@@ -37,17 +30,23 @@
 ##
 ##      SetWPAInfo($Info)   Write new WPA info with new values
 ##
-##      GetDHCPInfo()->      Return array of interface specifics from DHCPCD.conf
-##          ->{Lines}           Lines from file, not concerning interface info
-##          ->{$IF}             Points to interfaces entry for interface
-##          ->{Interfaces}[]    List of interfaces seen
-##              ->{Name}            Name of interface (ie: "wlan0")
-##              ->{Lines}[]         Lines specific to the interface (all of them)
-##              ->{IPAddr}          Static IP address of interface
-##              ->{Router}          Static router     of interface
-##              ->{DNS1}            Static 1st DNS to use
-##              ->{DNS2}            Static 2nd DNS to use
+##      GetDHCPInfo()       Return array of interface specifics from DHCPCD.conf
+##          ->{Valid}           TRUE if DHCP info file found
+##          ->{$IF}             Name of interface
+##              ->{IPAddr}      Static IP address of interface
+##              ->{Router}      Static router     of interface
+##              ->{DNS1}        Static 1st DNS to use
+##              ->{DNS2}        Static 2nd DNS to use
 ##    
+##      SetDHCPInfo($Info)  Write new DHCP info with new values
+##
+##      GetNetEnable()->[]  Return array if enable/disable specifics from the netenable file
+##          ->{Valid}           TRUE if DHCP info file found
+##          ->{$IF}             Points to interfaces entry for interface
+##              ->"enable"      Value is "enable" or "disable"
+##
+##      SetNetEnable($Info) Write new netenable info with new values
+##
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -82,13 +81,15 @@ use Carp;
 
 use File::Slurp qw(read_file write_file);
 
+use Site::ParseData;
+
 our @EXPORT  = qw(&GetNetDevs
-                  &GetNetEnable
-                  &SetNetEnable
                   &GetWPAInfo
                   &SetWPAInfo
                   &GetDHCPInfo
                   &SetDHCPInfo
+                  &GetNetEnable
+                  &SetNetEnable
                   );          # Export by default
 
 ########################################################################################################################
@@ -100,8 +101,56 @@ our @EXPORT  = qw(&GetNetDevs
 ########################################################################################################################
 
 our $DHCPConfigFile = "/etc/dhcpcd.conf";
-our $WPAConfigFile  = "/etc/wpa_supplicant/wpa_supplicant.conf";
-our $NEConfigFile   = "..//etc/netenable";
+our  $WPAConfigFile = "/etc/wpa_supplicant/wpa_supplicant.conf";
+our   $NEConfigFile = "../etc/netenable";
+
+#
+# ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+# update_config=1
+# country=US
+#
+# network={
+# 	ssid="netname"
+# 	psk="netpw"
+# 	key_mgmt=WPA-PSK
+#   }
+#
+our $WPAMatches = [
+    {                     RegEx => qr/^\s*#/                  , Action => Site::ParseData::SkipLine }, # Skip comments
+    { Name =>     "SSID", RegEx => qr/^\s*ssid\s*=\s*\"(.+)\"/, Action => Site::ParseData::AddVar   },
+    { Name => "Password", RegEx => qr/^\s*psk\s*=\s*\"(.+)\"/ , Action => Site::ParseData::AddVar   },
+    { Name =>  "KeyMGMT", RegEx => qr/^\s*key_mgmt\s*=\s*(.+)/, Action => Site::ParseData::AddVar   },
+    { Name =>  "Country", RegEx => qr/^\s*country\s*=\s*(.+)/ , Action => Site::ParseData::AddVar   },
+    ];
+
+#
+# interface wlan0
+#     static ip_address=192.168.1.31/24
+#     static routers=192.168.1.1
+#     static domain_name_servers=1.1.1.1 1.0.0.1
+#
+our $DHCPMatches = [
+    {                     RegEx  => qr/^\s*#/               , Action => Site::ParseData::SkipLine     }, # Skip Comments
+    {                     RegEx  => qr/^\s*interface\s*(.+)/, Action => Site::ParseData::StartSection },
+    { Name   => "IPAddr", RegEx  => qr/^\s*static\s*ip_address=(\d*\.\d*\.\d*\.\d*\/\d*)/,
+                          Action => Site::ParseData::AddVar},
+    { Name   => "Router", RegEx  => qr/^\s*static\s*routers=(\d*\.\d*\.\d*\.\d*)/        , 
+                          Action => Site::ParseData::AddVar},
+    { Name =>     "DNS1", RegEx  => qr/^\s*static\s*domain_name_servers\s*=\s*(\d*\.\d*\.\d*\.\d*)\s*\d*\.\d*\.\d*\.\d*/,
+                          Action => Site::ParseData::AddVar},
+    { Name =>     "DNS2", RegEx  => qr/^\s*static\s*domain_name_servers\s*=\s*\d*\.\d*\.\d*\.\d*\s*(\d*\.\d*\.\d*\.\d*)/,
+                          Action => Site::ParseData::AddVar },
+    ];
+
+#
+# wlan0:  disable
+# wlan1:  enable
+# eth0:   enable
+#
+our $NEMatches = [
+    { RegEx => qr/^\s*#/                    , Action => Site::ParseData::SkipLine },   # Skip Comments
+    { RegEx => qr/^(.*):\s*(enable|disable)/, Action => Site::ParseData::AddVar },
+    ];
 
 ########################################################################################################################
 ########################################################################################################################
@@ -156,40 +205,18 @@ sub GetNetDevs {
 #
 # NOTE: This function can recognize a SINGLE set of credentials on a system. This is
 #         consistent with Raspbian initial config using raspi-config. If your application
-#         uses multiple sets of Wifi credentials, this functiln will fail.
+#         uses multiple sets of Wifi credentials, use a different function.
 #
 sub GetWPAInfo {
-    my $WPAInfo = {};
 
-    #
-    # ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-    # update_config=1
-    # country=US
-    #
-    # network={
-    # 	ssid="netname"
-    # 	psk="netpw"
-    # 	key_mgmt=WPA-PSK
-    #   }
-    #
-    $WPAInfo->{    SSID} = `grep ssid     $WPAConfigFile`;
-    $WPAInfo->{Password} = `grep psk      $WPAConfigFile`;
-    $WPAInfo->{ KeyMGMT} = `grep key_mgmt $WPAConfigFile`;
-    $WPAInfo->{ Country} = `grep country  $WPAConfigFile`;
-    
-    $WPAInfo->{    SSID} =~ s/^.*ssid=\"(.+)\".*/$1/;
-    $WPAInfo->{Password} =~ s/^.*psk=\"(.+)\".*/$1/;
-    $WPAInfo->{ KeyMGMT} =~ s/^.*key_mgmt=(.+)\s/$1/;
-    $WPAInfo->{ Country} =~ s/^.*country=(.+)\s/$1/;
-    chomp $WPAInfo->{    SSID};
-    chomp $WPAInfo->{Password};
-    chomp $WPAInfo->{ KeyMGMT};
-    chomp $WPAInfo->{ Country};
+    return { Valid => 0 }
+        unless -r $WPAConfigFile;
 
-    $WPAInfo->{Valid} = 0;
-    $WPAInfo->{Valid} = 1
-        if defined $WPAInfo->{SSID} and
-           length  $WPAInfo->{SSID};
+    my $ConfigFile = Site::ParseData->new(Filename => $WPAConfigFile, Matches  => $WPAMatches);
+
+    my $WPAInfo = $ConfigFile->Parse();
+
+    $WPAInfo->{Valid} = 1;
 
     return $WPAInfo;
     }
@@ -211,8 +238,14 @@ sub GetWPAInfo {
 sub SetWPAInfo {
     my $WPAInfo = shift;
 
+    #
+    # If the original file did not exist, create an original one. If needed.
+    #
     return
-        unless $WPAInfo->{Valid};
+        if not -r $WPAConfigFile and
+           (not defined($WPAInfo->{SSID}) or length($WPAInfo->{SSID}) == 0);
+        
+    if( not -r $WPAConfigFile ) {
 
 my $wpa_text = <<"END_WPA";
 
@@ -227,10 +260,26 @@ network={
     }
 END_WPA
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$WPAText],[qw(WPAText)]);
+        write_file($WPAConfigFile,$wpa_text);
+        return;
+        }
 
-    write_file($WPAConfigFile,$wpa_text);
+    #
+    # Original file exists. Reparse and add new vars as needed.
+    #
+    my $ConfigFile = Site::ParseData->new(Filename => $WPAConfigFile, Matches => $WPAMatches);
+    $ConfigFile->Parse();
+
+    foreach my $VarName (keys %{$WPAInfo}) {
+        if( defined $ConfigFile->{Sections}{Global}{$VarName} ) {
+            $ConfigFile->{Sections}{Global}{$VarName}{NewValue} = $WPAInfo->{$VarName};
+            }
+        }
+
+use Data::Dumper;
+print Data::Dumper->Dump([$ConfigFile],["$ConfigFile->{Filename}"]);
+
+    $ConfigFile->Update();
     }
 
 
@@ -244,98 +293,15 @@ END_WPA
 # Outputs:  Hash of network data
 #
 sub GetDHCPInfo {
-    my $State     = "START";
-    my $Interface = "";
 
-    my $DHCPInfo  = { Lines => [], Interfaces => [] };
-    my @DHCPLines = eval{read_file($DHCPConfigFile)}    # Catches/avoids Croak() in lib function
-        or return $DHCPInfo;
+    return { Valid => 0 }
+        unless -r $DHCPConfigFile;
 
-    foreach my $Line (@DHCPLines) {
+    my $ConfigFile = Site::ParseData->new(Filename => $DHCPConfigFile, Matches  => $DHCPMatches);
 
-        chomp $Line;
+    my $DHCPInfo = $ConfigFile->Parse();
 
-        ################################################################################################################
-        #
-        # START: Look for an initial interface line
-        #
-        #       interface wlan0
-        #
-        if( $State eq "START" ) {
-
-            #
-            # Anything that's not an interface block is considered a generic "line", and goes
-            #   in the generic section.
-            #
-            unless( $Line =~ "^interface" ) {
-                push @{$DHCPInfo->{Lines}},$Line;
-#print "DHCPInfo[START]: Ignoring line $Line\n";
-                next;
-                }
-
-            #
-            # When "interface" is seen, grab the name and switch to the interface parser
-            #
-            my ($Unused,$IF) = split /\s/,$Line;
-
-            $Interface = $IF;
-            push @{$DHCPInfo->{Interfaces}},{ Name => $IF, Lines => [] };
-            push @{$DHCPInfo->{Interfaces}[-1]{Lines}},$Line;
-            $DHCPInfo->{$IF} = $DHCPInfo->{Interfaces}[-1];
-            $State = "IF";
-#print "DHCPInfo[START]: Interface $IF\n";
-            next;
-            }
-
-        ################################################################################################################
-        #
-        # IF: Look for interface config lines
-        #
-        #   interface wlan0
-        #       static ip_address=192.168.1.31
-        #       static routers=192.168.1.1
-        #       static domain_name_servers=1.1.1.1 1.0.0.1
-        #
-        if( $State eq "IF" ) {
-
-            #
-            # When another block begins, start a new device section
-            #
-            redo
-                if $Line =~ "interface";
-
-#print "DHCPInfo[IF]: $Line\n";
-
-            push @{$DHCPInfo->{Interfaces}[-1]{Lines}},$Line;
-
-            $DHCPInfo->{Interfaces}[-1]{IPAddr} = $1
-                if $Line =~ /^\s*static\s*ip_address=(\d*\.\d*\.\d*\.\d*\/\d*)/;
-
-            $DHCPInfo->{Interfaces}[-1]{Router} = $1
-                if $Line =~ /^\s*static\s*routers=(\d*\.\d*\.\d*\.\d*)/;
-
-            if( $Line =~ /^\s*static\s*domain_name_servers\s*=\s*(\d*\.\d*\.\d*\.\d*)\s*(\d*\.\d*\.\d*\.\d*)/ ) {
-                $DHCPInfo->{Interfaces}[-1]{DNS1} = $1;
-                $DHCPInfo->{Interfaces}[-1]{DNS2} = $2;
-                }
-            }
-        }
-
-    #
-    # Ensure each device has an entry
-    #
-    my $NetDevs = GetNetDevs();
-    foreach my $IF (@{$NetDevs}) {
-
-        next
-            unless defined $DHCPInfo->{$IF};
-
-        push @{$DHCPInfo->{Interfaces}},{ Name => $IF, Lines => [], IPAddr => "", Router => "", DNS1 => "", DNS2 => "" };
-        $DHCPInfo->{$IF} = $DHCPInfo->{Interfaces}[-1];
-        }
-
-#use Data::Dumper;
-#print Data::Dumper->Dump([$DHCPInfo],[qw(DHCPInfo)]);
+    $DHCPInfo->{Valid} = 1;
 
     return $DHCPInfo;
     }
@@ -353,67 +319,84 @@ sub GetDHCPInfo {
 sub SetDHCPInfo {
     my $DHCPInfo = shift;
 
-    my $DHCPLines = [];
+    #
+    # If the original file did not exist, we simply punt. It probably means DHCP is not installed.
+    #
+    return
+        unless -r $DHCPConfigFile;
+    
+    my $ConfigFile = Site::ParseData->new(Filename => $DHCPConfigFile, Matches => $DHCPMatches);
+    my $NEInfo = $ConfigFile->Parse();
 
     #
-    # Add out the initial lines (mostly comments, and some non-interface flags)
+    # Update the existing vars, and add new vars as needed
     #
-    # Don't forget the EOLs
-    #
-    $DHCPLines = [ map { $_ . "\n" } @{$DHCPInfo->{Lines}} ];
+    foreach my $IFName (keys %{$DHCPInfo}) {
+        my $IF = $ConfigFile->{Sections}{$IFName};
 
-    #
-    # For each interface write out the new lines, but with changed information
-    #
-    foreach my $IF (@{$DHCPInfo->{Interfaces}}) {    
         #
-        # Special case: If there are *no* lines associated with an interface, it's because
-        #   there were none in the original DHCP file.
+        # No original DHCP info.
         #
-        # If there's now a user-requested static config, then create an initial set of lines.
-        #   This should filter unharmed through the loop below.
-        #
-        if( $IF->{Lines} == 0 and               # No existing lines for interface
-            ( length($IF->{IPAddr}) or 
-              length($IF->{Router}) or 
-              length($IF->{  DNS1}) or 
-              length($IF->{  DNS2}) ) ) {
-            push @{$IF->{Lines}},"interface $IF->{Name}";
-            push @{$IF->{Lines}},"    static ip_address=$IF->{IPAddr}";
-            push @{$IF->{Lines}},"    static routers=$IF->{Router}";
-            push @{$IF->{Lines}},"    static domain_name_servers=$IF->{DNS1} $IF->{DNS2}";
-            push @{$IF->{Lines}},"";
+        if( not defined $IF ) {
+
+            #
+            # Not enabled anyway - Skip
+            #
+            if( not $DHCPInfo->{$IFName}{Enabled} ) {
+                next;
+                }
+
+            #
+            # Not static - Skip
+            #
+            if( $DHCPInfo->{$IFName}{DHCP} ) {
+                next;
+                }
+
+            #
+            # Add a new section to config file.
+            #
+            my $IFConfig = [
+                "",
+                "interface $IFName",
+                "    static ip_address=$DHCPInfo->{$IFName}{IPAddr}",
+                "    static routers=$DHCPInfo->{$IFName}{Router}",
+                "    static domain_name_servers=$DHCPInfo->{$IFName}{DNS1} $DHCPInfo->{$IFName}{DNS2}",
+                ""];
+
+            $ConfigFile->AddLines($IFConfig);
+            next;
             }
 
         #
-        # Go through any existing lines the user may have, changing their configuration settings
-        #   when encountered
+        # An original DHCP block exists and New description is disabled. Comment out original
         #
-        for( my $LineNo = 0; $LineNo < @{$IF->{Lines}}; $LineNo++ ) {
-
-            $IF->{Lines}[$LineNo] =~ s/$IF->{IPAddr}/$DHCPInfo->{IF}{IPAddr}/
-                if $IF->{Lines}[$LineNo] =~ /ip_address/;
-
-            $IF->{Lines}[$LineNo] =~ s/$IF->{Router}/$DHCPInfo->{IF}{Router}/
-                if $IF->{Lines}[$LineNo] =~ /routers/;
-
-            $IF->{Lines}[$LineNo] =~ s/$IF->{DNS1}/$DHCPInfo->{IF}{DNS1}/
-                if $IF->{Lines}[$LineNo] =~ /domain_name_servers/;
-
-            $IF->{Lines}[$LineNo] =~ s/$IF->{DNS2}/$DHCPInfo->{IF}{DNS2}/
-                if $IF->{Lines}[$LineNo] =~ /domain_name_servers/;
+        if( not $DHCPInfo->{$IFName}{Enabled} ) {
+            $ConfigFile->Comment($IF);
+            next;
             }
 
         #
-        # Save the new settings. Don't forget linefeeds.
+        # An original DHCP block exists and New description is not static. Comment out original
         #
-        push @{$DHCPLines},map { $_ . "\n" } @{$IF->{Lines}};
+        if( $DHCPInfo->{$IFName}{DHCP} ) {
+            $ConfigFile->Comment($IF);
+            next;
+            }
+
+        #
+        # An original DHCP block exists and New description is static. Change all the vars
+        #
+        foreach my $VarName (keys %{$DHCPInfo->{$IFName}}) {
+            $IF->{$VarName}{NewValue} = $DHCPInfo->{$IFName}{$VarName}
+                if defined $IF->{$VarName}{Value};
+            }
         }
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$DHCPLines],[qw(DHCPInfo)]);
+    $ConfigFile->Update();
 
-    write_file($WPAConfigFile,$DHCPLines);
+#use Data::Dumper;
+#print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
     }
 
 
@@ -428,44 +411,14 @@ sub SetDHCPInfo {
 #
 sub GetNetEnable {
 
-    my $NEInfo  = { Lines => [], Interfaces => [] };
-    my @NELines = eval{read_file($NEConfigFile)}    # Catches/avoids Croak() in lib function
-        or return $NEInfo;
+    return { Valid => 0 }
+        unless -r $NEConfigFile;
 
-    foreach my $Line (@NELines) {
+    my $ConfigFile = Site::ParseData->new(Filename => $NEConfigFile, Matches  => $NEMatches);
 
-        chomp $Line;
+    my $NEInfo = $ConfigFile->Parse();
 
-        push @{$NEInfo->{Lines}},$Line;
-
-        #
-        # When an interface flag is seen, parse out the interface and flag
-        #
-        next
-            unless $Line =~ '^(.*):\s*(enable|disable)';
-
-        my $IF     = $1;            # (Set from previous match)
-        my $Enable = $2;
-
-        push @{$NEInfo->{Interfaces}},{ Name => $IF, Enabled => lc($Enable) eq "enable" ? 1 : 0};
-        $NEInfo->{$IF} = $NEInfo->{Interfaces}[-1]->{Enabled};
-        }
-
-    #
-    # Ensure each device has an entry
-    #
-    my $NetDevs = GetNetDevs();
-    foreach my $IF (@{$NetDevs}) {
-
-        next
-            unless defined $NEInfo->{$IF};
-
-        push @{$NEInfo->{Interfaces}},{ Name => $IF, Enabled => 1, lines => [ "$IF: enable" ]};
-        $NEInfo->{$IF} = $NEInfo->{Interfaces}[-1];
-        }
-
-#use Data::Dumper;
-#print Data::Dumper->Dump([$NEInfo],[qw(NEInfo)]);
+    $NEInfo->{Valid} = 1;
 
     return $NEInfo;
     }
@@ -485,23 +438,34 @@ sub SetNetEnable {
     my $EnbLines = [];
 
     #
-    # Add out the initial lines (mostly comments, and some non-interface flags)
+    # If the original file did not exist, create an empty one.
     #
-    # Don't forget the EOLs
-    #
-    foreach my $Line (@{$EnbInfo->{Lines}}) {
-        foreach my $IF (@{$EnbInfo->{Interfaces}}) {
-            $Line =~ s/enable|disable/$EnbInfo->{$IF}{Enabled} ? "enable" : "disable"/
-                if $Line =~ '^(.*):\s*(enable|disable)';
-            }
-
-        push @{$EnbLines},$Line . "\n";
+    unless( -w $NEConfigFile ) {
+        write_file($NEConfigFile,"");
         }
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$NEInfo],[qw(NEInfo)]);
+    my $ConfigFile = Site::ParseData->new(Filename => $NEConfigFile, Matches => $NEMatches);
+    my $NEInfo = $ConfigFile->Parse();
 
-    write_file($NEConfigFile,$EnbLines);
+    #
+    # Update the existing vars, and add new vars as needed
+    #
+    foreach my $IFName (keys %{$EnbInfo}) {
+
+        my $Enable = $EnbInfo->{$IFName} ? "enable" : "disable";
+
+        if( defined $ConfigFile->{Sections}{Global}{$IFName} ) {
+            $ConfigFile->{Sections}{Global}{$IFName}{NewValue} = $Enable;
+            }
+        else {
+            $ConfigFile->AddLines("$IFName: " . $Enable);
+            }
+        }
+
+    $ConfigFile->Update();
+
+#use Data::Dumper;
+#print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
     }
 
 

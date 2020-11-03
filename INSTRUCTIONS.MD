@@ -1,3 +1,56 @@
+## Overview
+
+The AppDaemon is meant to be integrated into your application. Once you get the AppDaemon running, 
+modify it to make it look like a part of your project.
+
+## Changing the config page looks
+
+The single page "public_html/index.html" contains all the configuration pages. Feel free to insert your
+company logo, and make the config page branding closer to your own such as the page colors, font face
+and so on.
+
+The accompanying Config.js and Config.css file are also relevant.
+
+## Adding default config files
+
+The AppDaemon tries to edit configuration files with updated information entered by the user, but
+it is not intelligent.
+
+If your product needs default configurations, either supply
+- No configuration block, or
+- A fully defined configuration block
+
+In particular, do not supply a partial configuration block as part of your default system given to
+customers. The AppDaemon will not properly deal with these.
+
+For example, the following configuration block in /etc/dhcpcd.conf is acceptable:
+
+````
+interface wlan0
+    static ip_address=192.168.1.31/24
+    static routers=192.168.1.1
+    static domain_name_servers=1.1.1.1 1.0.0.1
+````
+
+This is a fully fleshed block, and will be parsed correctly. If the user makes changes, those changes
+will be edited inline and saved.
+
+Having *no* configuration block is acceptable - AppDaemon detects this and will add a complete block if
+needed.
+
+The following configuration block in /etc/dhcpcd.conf is not acceptable:
+
+````
+interface wlan0
+    static ip_address=192.168.1.31/24
+````
+
+Since only a partial block is supplied, AppDaemon will not properly process it during the "save and reboot"
+process.
+
+The same caveat applies to /etc/wpa_cupplicant/wpa_supplicant.conf: supply either no file, or a file with
+complete connection credentials.
+
 ## Disabling network interfaces
 
 Lines in the file AppDaemon/etc/netenable can selectively enable/disable network interfaces as needed.
@@ -57,7 +110,7 @@ The "About" page will notice the missing button and omit the information from th
 ```
 
 ---
-## Adding a panels for your application
+## Adding panels for your application
 
 To add a new panel:
 - Add an entry (button/link) to the TOC
@@ -124,7 +177,7 @@ In ConfigServer, add code to retrieve the information when it arrives:
         Message("ConfigServer: GetGPIOList()")
             if $Verbose;
         $Request->{Error} = "No error.";
-        $Request->{State} = GetGPIOList();  <b>#&lt;-- You supply this function
+        $Request->{State} = GetGPIOList();  <b>#&lt;-- You supply this function</b>
         }
 </code></pre>
 
@@ -151,4 +204,3 @@ In Config.js, add code to receive the new data:
         return;
         }
 </code></pre>
-

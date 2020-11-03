@@ -39,13 +39,14 @@
 //              {Password}->'(something)',
 //              { Country}->'US'
 //              { Changed}-> 1          // Set by config page if user changes something
-//          {$IF}    ->                 // ex: $Config->{"wlan0"}->
-//              {Enabled}->0,
-//              {   DHCP}->1,
-//              { IPAddr}->'192.168.1.31/24',
-//              { Router}->'192.168.1.1',
-//              {   DNS1}->'1.0.0.1',
-//              {   DNS2}->'1.1.1.1',
+//          {DHCPInfo}->
+//              {$IF}->                 // ex: $Config.DHCPInfo.wlan0->
+//                  {Enabled}->0,
+//                  {   DHCP}->1,
+//                  { IPAddr}->'192.168.1.31/24',
+//                  { Router}->'192.168.1.1',
+//                  {   DNS1}->'1.0.0.1',
+//                  {   DNS2}->'1.1.1.1',
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -133,7 +134,7 @@
                 return;
                 }
 
-            console.log("Msg: "+Event.data);
+//            console.log("Msg: "+Event.data);
 
             if( ConfigData["Type"] == "GetWifiList" ) {
 //                console.log(ConfigData);
@@ -158,8 +159,12 @@
                 for (i = 0; i < SysNameElements.length; i++) {
                     SysNameElements[i].innerHTML = OrigConfig.SysName;
                     };
-                Config.WPAInfo.Changed = 0;                         // User hasn't changed, yet
                 GotoPage("TOCPage");
+                return;
+                }
+
+            if( ConfigData["Type"] == "SetConfig" ) {
+//                console.log(ConfigData);
                 return;
                 }
 
@@ -293,11 +298,17 @@
             }
 
         if( characterCode == 13 ) {     // Enter
-            Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
-            Config.WPAInfo.Password = document.getElementById("Password").value;
-            Config.WPAInfo.Changed  = 1;
-            GotoPage("TOCPage");
+            ChangeSSID();
             }
+        }
+
+    //
+    // ChangeSysName - Processed entered system names
+    //
+    function ChangeSSID(NewName) {
+        Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
+        Config.WPAInfo.Password = document.getElementById("Password").value;
+        GotoPage("TOCPage");
         }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,17 +362,17 @@
 
         Config.NetDevs.forEach(function (IF) { 
             var IFEntry    = IFTemplate.replaceAll("$IF",IF)
-                                       .replaceAll("$EN",Config[IF].Enabled ? "checked" : "");
+                                       .replaceAll("$EN",Config.DHCPInfo[IF].Enabled ? "checked" : "");
             IFTable.innerHTML += IFEntry;
 
-            if( Config[IF].Enabled ) {
+            if( Config.DHCPInfo[IF].Enabled ) {
                 var StaticTable = StaticTemplate.replaceAll("$IF"    ,IF)
-                                                .replaceAll("$DHCP"  ,Config[IF].DHCP ? "checked"  : "")
-                                                .replaceAll("$DDIS"  ,Config[IF].DHCP ? "disabled" : "")
-                                                .replaceAll("$IPAddr",Config[IF].IPAddr)
-                                                .replaceAll("$Router",Config[IF].Router)
-                                                .replaceAll("$DNS1"  ,Config[IF].DNS1)
-                                                .replaceAll("$DNS2"  ,Config[IF].DNS2);
+                                                .replaceAll("$DHCP"  ,Config.DHCPInfo[IF].DHCP ? "checked"  : "")
+                                                .replaceAll("$DDIS"  ,Config.DHCPInfo[IF].DHCP ? "disabled" : "")
+                                                .replaceAll("$IPAddr",Config.DHCPInfo[IF].IPAddr)
+                                                .replaceAll("$Router",Config.DHCPInfo[IF].Router)
+                                                .replaceAll("$DNS1"  ,Config.DHCPInfo[IF].DNS1)
+                                                .replaceAll("$DNS2"  ,Config.DHCPInfo[IF].DNS2);
                 IFTable.innerHTML += StaticTable; 
                 }
             });
@@ -369,13 +380,13 @@
 
     function ToggleEnable(EnableCheckbox) {
         var IF = EnableCheckbox.name.replace("-Enabled","");
-        Config[IF].Enabled = !Config[IF].Enabled;
+        Config.DHCPInfo[IF].Enabled = 1 - Config.DHCPInfo[IF].Enabled;
         PopulateNetworkPage();
         }
 
     function ToggleDHCP(DHCPCheckbox) {
         var IF = DHCPCheckbox.name.replace("-DHCP","");
-        Config[IF].DHCP = !Config[IF].DHCP;
+        Config.DHCPInfo[IF].DHCP = 1 - Config.DHCPInfo[IF].DHCP;
         PopulateNetworkPage();
         }
 
@@ -384,10 +395,15 @@
     //
     function UpdateIF(Event) {
         Config.NetDevs.forEach(function (IF) { 
-            Config[IF].IPAddr = document.getElementById(IF+"-IPAddr").value;
-            Config[IF].Router = document.getElementById(IF+"-Router").value;
-            Config[IF].DNS1   = document.getElementById(IF+"-DNS1"  ).value;
-            Config[IF].DNS2   = document.getElementById(IF+"-DNS2"  ).value;
+
+            if( !Config.DHCPInfo[IF].Enabled ) {        // Elements below don't exist
+                return;
+                }
+
+            Config.DHCPInfo[IF].IPAddr = document.getElementById(IF+"-IPAddr").value;
+            Config.DHCPInfo[IF].Router = document.getElementById(IF+"-Router").value;
+            Config.DHCPInfo[IF].DNS1   = document.getElementById(IF+"-DNS1"  ).value;
+            Config.DHCPInfo[IF].DNS2   = document.getElementById(IF+"-DNS2"  ).value;
             });
 
         GotoPage("TOCPage");
@@ -434,7 +450,8 @@
         // Wifi SSID and password
         //
         if( document.getElementById("WB") != undefined ) {
-            if( Config.WPAInfo.Changed ) {
+            if( Config.WPAInfo.SSID     != OrigConfig.WPAInfo.SSID ||
+                Config.WPAInfo.Password != OrigConfig.WPAInfo.Password ) {
                 TableText = Config.WPAInfo.SSID;
                 if( Wifi.Encryption ) {
                     TableText += "with password";
@@ -454,12 +471,12 @@
         //
         if( document.getElementById("NB") != undefined ) {
             Config.NetDevs.forEach(function (IF) { 
-                if( !Config[IF].Enabled ) {
+                if( !Config.DHCPInfo[IF].Enabled ) {
                     TableText = "disabled";
                     }
                 else {
                     TableText = "enabled";
-                    if( Config[IF].DHCP ) {
+                    if( Config.DHCPInfo[IF].DHCP ) {
                         TableText += ", using  DHCP";
                         }
                     else {
@@ -468,11 +485,11 @@
                     }
                 AddReviewLine(IF + ": ",TableText);
 
-                if( Config[IF].Enabled && !Config[IF].DHCP ) {
-                    AddReviewLine("","IPAddr: " + Config[IF].IPAddr);
-                    AddReviewLine("","Router: " + Config[IF].Router);
-                    AddReviewLine("","DNS1:   " + Config[IF].DNS2);
-                    AddReviewLine("","DNS2:   " + Config[IF].DNS1);
+                if( Config.DHCPInfo[IF].Enabled && !Config.DHCPInfo[IF].DHCP ) {
+                    AddReviewLine("","IPAddr: " + Config.DHCPInfo[IF].IPAddr);
+                    AddReviewLine("","Router: " + Config.DHCPInfo[IF].Router);
+                    AddReviewLine("","DNS1:   " + Config.DHCPInfo[IF].DNS2);
+                    AddReviewLine("","DNS2:   " + Config.DHCPInfo[IF].DNS1);
                     }
                 });
             }
@@ -504,4 +521,6 @@
     //
     // PopulateEpilogPage - Populate the directory page as needed
     //
-    function PopulateEpilogPage() {}
+    function PopulateEpilogPage() {
+        ConfigCommand("SetConfig",Config);
+        }
