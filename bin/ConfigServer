@@ -227,8 +227,25 @@ sub WebRequest {
         Message("ConfigServer: GetWifiList()")
             if $Verbose;
         $Request->{Error} = "No error.";
-        $Request->{State} = GetIWList();
-#print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
+        my $IWList = GetIWList();
+        #
+        # Collapse the SSIDs from all devices into one list
+        #
+        my $List = [];
+        foreach my $IFName (keys %{$IWList}) {
+            foreach my $Wifi (@{$IWList->{$IFName}}) {
+                next
+                    if $Wifi->{SSID} eq "--none--";
+
+                next
+                    if grep { $_->{SSID} eq $Wifi->{SSID} } @{$List};
+
+                push @{$List},$Wifi;
+                }
+            }
+        $Request->{State} = $List;
+
+# print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
         }
 
     #

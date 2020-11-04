@@ -140,7 +140,7 @@
 
             if( ConfigData["Type"] == "GetWifiList" ) {
 //                console.log(ConfigData);
-                WifiList = ConfigData.State.wlan0;
+                WifiList = ConfigData.State;
                 //
                 // Fix ideopathic problem: Sometimes the IWList function returns nothing, with no error.
                 //
