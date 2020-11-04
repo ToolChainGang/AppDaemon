@@ -159,6 +159,15 @@
                 for (i = 0; i < SysNameElements.length; i++) {
                     SysNameElements[i].innerHTML = OrigConfig.SysName;
                     };
+
+                //
+                // Disable file sharing page if samba not installed
+                //
+                if( !OrigConfig.FSInfo.Valid ) {
+                    SBLine = document.getElementById("SB");
+                    SBLine.style.display = "none";
+                    }
+
                 GotoPage("TOCPage");
                 return;
                 }
@@ -218,7 +227,6 @@
     // PopulateSSIDPage - Populate the SSID page with newly received SSID list
     //
     function PopulateSSIDPage() {
-
         var CurrentSSID = document.getElementById("CurrentSSID");
 
         var UsingPassword = " (with no password)";
@@ -243,6 +251,8 @@
 
             WifiNames.innerHTML += WifiTableLine(Wifi.SSID,Wifi.Quality,Wifi.Encryption == "on");
             });
+
+        Wifi = undefined;
         }
 
     //
@@ -263,10 +273,7 @@
     //
     // ChooseSSID - Select and choose SSID to use
     //
-    function ChooseSSID(ChosenSSID) {
-        SSID = ChosenSSID;
-
-        Wifi = undefined;
+    function ChooseSSID(SSID) {
         WifiList.forEach(function (This) { 
             if( This.SSID == ChosenSSID )
                 Wifi = This;
@@ -306,8 +313,10 @@
     // ChangeSysName - Processed entered system names
     //
     function ChangeSSID(NewName) {
-        Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
-        Config.WPAInfo.Password = document.getElementById("Password").value;
+        if( Wifi != undefined ) {       // If user selected an SSID
+            Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
+            Config.WPAInfo.Password = document.getElementById("Password").value;
+            }
         GotoPage("TOCPage");
         }
 
@@ -340,7 +349,7 @@
     //
     // ChangeSysName - Processed entered system names
     //
-    function ChangeSysName(NewName) {
+    function ChangeSysName() {
         var NewName = document.getElementById("SysName").value;
 
         if( ! /^[a-zA-Z0-9_][a-zA-Z0-9-_][a-zA-Z0-9_]{1,61}$/.test(NewName) ) {
@@ -394,26 +403,93 @@
     // UpdateIF - Process entered IF data
     //
     function UpdateIF(Event) {
+        var TOC = true;
         Config.NetDevs.forEach(function (IF) { 
 
             if( !Config.DHCPInfo[IF].Enabled ) {        // Elements below don't exist
                 return;
                 }
 
-            Config.DHCPInfo[IF].IPAddr = document.getElementById(IF+"-IPAddr").value;
-            Config.DHCPInfo[IF].Router = document.getElementById(IF+"-Router").value;
-            Config.DHCPInfo[IF].DNS1   = document.getElementById(IF+"-DNS1"  ).value;
-            Config.DHCPInfo[IF].DNS2   = document.getElementById(IF+"-DNS2"  ).value;
+            if( Config.DHCPInfo[IF].DHCP     ) {        // Elements below don't matter
+                return;
+                }
+
+            var IPAddr = document.getElementById(IF+"-IPAddr").value;
+            var Router = document.getElementById(IF+"-Router").value;
+            var DNS1   = document.getElementById(IF+"-DNS1"  ).value;
+            var DNS2   = document.getElementById(IF+"-DNS2"  ).value;
+
+            if( ! /^\d*\.\d*\.\d*\.\d*\/\d*$/.test(IPAddr) ) {
+                alert('IP address "' + IPAddr + '" is not a valid IP address/mask combination.');
+                TOC = false;
+                return;
+                }
+
+            if( ! /^\d*\.\d*\.\d*\.\d*$/.test(Router) ) {
+                alert('Router "' + Router + '" is not a valid IP address.');
+                TOC = false;
+                return;
+                }
+
+            if( ! /^\d*\.\d*\.\d*\.\d*$/.test(DNS1) ) {
+                alert('DNS1 "' + DNS1 + '" is not a valid IP address.');
+                TOC = false;
+                return;
+                }
+
+            if( ! /^\d*\.\d*\.\d*\.\d*$/.test(DNS2) && ! (DNS2 == "") ) {
+                alert('DNS2 "' + DNS2 + '" is not a valid IP address.');
+                TOC = false;
+                return;
+                }
+
+            Config.DHCPInfo[IF].IPAddr = IPAddr;
+            Config.DHCPInfo[IF].Router = Router;
+            Config.DHCPInfo[IF].DNS1   = DNS1;
+            Config.DHCPInfo[IF].DNS2   = DNS2;
             });
 
-        GotoPage("TOCPage");
+        if( TOC ) {
+            GotoPage("TOCPage");
+            }
         }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // PopulateSharingPage - Populate the directory page as needed
     //
-    function PopulateSharingPage() {}
+    function PopulateSharingPage() {
+        WorkgroupElement = document.getElementById("CurrentWorkgroup");
+        WorkgroupElement.innerHTML = OrigConfig.FSInfo.Workgroup;
+        }
+
+    //
+    // EnterWGName - Process "enter" in sysname field
+    //
+    function EnterWGName(Event) {
+        var characterCode;
+
+        if( Event && Event.which ) {
+            characterCode = Event.which;
+            }
+        else{
+            characterCode = Event.keyCode;
+            }
+
+        if( characterCode == 13 ) {     // Enter
+            ChangeWGName();
+            }
+        }
+
+    //
+    // ChangeWgName - Processed entered workgroup names
+    //
+    function ChangeWGName() {
+        var NewName = document.getElementById("WGName").value;
+
+        Config.FSInfo.Workgroup = NewName;
+        GotoPage("TOCPage");
+        }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -421,6 +497,7 @@
     //
     function PopulateAboutPage() {
         var InfoLines = document.getElementById("InfoLines");
+        InfoLines.innerHTML = '<tr><td style="width: 10%"><h1>About:&nbsp;</h1></td><td><h1><span class="' + OrigConfig.SysName + '"></span></h1></td></tr>';
 
         Config.About.forEach(function (InfoLine) { 
             var FmtLine = InfoLine.replace(": ",":<b> ") + "</b>";
@@ -467,6 +544,20 @@
             }
 
         //
+        // Sharing
+        //
+        if( document.getElementById("SB") != undefined &&
+            document.getElementById("SB").style.display != "none" ) {
+            if( Config.FSInfo.Workgroup != OrigConfig.FSInfo.Workgroup ) {
+                TableText = Config.FSInfo.Workgroup;
+                }
+            else {
+                TableText = "(no change)";
+                }
+            AddReviewLine("Workgroup: ",TableText);
+            }
+
+        //
         // Networking
         //
         if( document.getElementById("NB") != undefined ) {
@@ -492,14 +583,6 @@
                     AddReviewLine("","DNS2:   " + Config.DHCPInfo[IF].DNS1);
                     }
                 });
-            }
-
-        //
-        // Sharing
-        //
-        if( document.getElementById("SB") != undefined ) {
-            // TBD
-
             }
 
         //

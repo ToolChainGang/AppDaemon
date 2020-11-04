@@ -54,7 +54,7 @@ PATH="$PATH:$HOME/AppDaemon/bin"
 #
 # Ensure we're being run as root
 #
-if ! IAmRoot; then
+if [ "$EUID" -ne 0 ]
     echo
     echo "Must be run as root" 
     echo
@@ -66,7 +66,22 @@ if ! IAmRoot; then
 #
 # Ensure that the disk has been expanded
 #
-if ! DiskExpanded; then
+DiskSize="$(lsblk  -b /dev/mmcblk0   | grep disk | awk '{print $4}')"
+Part1Size="$(lsblk -b /dev/mmcblk0p1 | tail -n1  | awk '{print $4}')"
+Part2Size="$(lsblk -b /dev/mmcblk0p2 | tail -n1  | awk '{print $4}')"
+Unused=$(($DiskSize-$Part1Size-$Part2Size))
+
+#  echo "Disk  : $DiskSize"
+#  echo "Part1 : $Part1Size"
+#  echo "Part2 : $Part2Size"
+#  echo "Unused: $Unused"
+
+########################################################################################################################
+#
+# The SaveCard program will add an additional 20 MB for proper booting. If the resulting image
+#   has less than 500MB of free space, we assume that the disk hasn't been expanded.
+#
+if [ "$Unused" -gt 500000000 ]; then
     echo "============>Disk is not expanded, automatically expanding with reboot..."
     echo
     raspi-config --expand-rootfs

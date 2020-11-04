@@ -1,5 +1,4 @@
-#!/usr/bin/perl
-#
+#!/dev/null
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -7,21 +6,26 @@
 ##      All Rights Reserved under the MIT license as outlined below.
 ##
 ##  FILE
-##      SetHostName
+##
+##      Site::FSInfo.pm
 ##
 ##  DESCRIPTION
-##      Set a new system host name
 ##
-##  USAGE
-##      SetHostName <NewName>
+##      Return various file sharing (ie - Samba) information
 ##
-##          <NewName>           New host name for this system
+##  DATA
 ##
-##  EXAMPLE
-##      SetHostName Brontes     # Change system name to "Brontes"
+##      None.
 ##
-##  NOTES
-##      REQUIRES ROOT ACCESS! REQUIRES FIGLET!
+##  FUNCTIONS
+##
+##      GetFSInfo()         Return array of sharing info
+##          ->{Valid}           TRUE if smb.conf found
+##          ->{Workgroup}       Samba workgroup
+##          ->{Users}           Samba users  
+##              ->{UserName}    Specific Samba user
+##
+##      SetFSInfo($Info)    Write new FS info with new values
 ##
 ########################################################################################################################
 ########################################################################################################################
@@ -48,18 +52,20 @@
 ########################################################################################################################
 ########################################################################################################################
 
+package Site::FSInfo;
+    use base "Exporter";
+
 use strict;
 use warnings;
 use Carp;
 
-use lib "/root/AppDaemon/lib";
+use File::Slurp qw(read_file write_file);
 
-use Site::RasPiUtils;
-use Site::CommandLine;
+use Site::ParseData;
 
-local $ENV{PATH} = "$ENV{PATH}:/root/AppDaemon/bin";
-
-our $VERSION = '1.0';
+our @EXPORT  = qw(&GetFSInfo
+                  &SetFSInfo
+                  );          # Export by default
 
 ########################################################################################################################
 ########################################################################################################################
@@ -69,64 +75,77 @@ our $VERSION = '1.0';
 ########################################################################################################################
 ########################################################################################################################
 
-my $HostName  = shift @ARGV;        # New system name
-
-$| = 1;             # Flush output immediately
+our $FSConfigFile = "/etc/samba/smb.conf";
 
 #
-# Only allowed as root
+#   workgroup = WORKGROUP
 #
-die "\nMust be run by root\n\n"
-    unless IAmRoot();
+our $FSMatches = [
+    {                      RegEx => qr/^\s*#/                   , Action => Site::ParseData::SkipLine }, # Skip comments
+    {                      RegEx => qr/^\s*;/                   , Action => Site::ParseData::SkipLine }, # Skip comments
+    { Name => "Workgroup", RegEx => qr/^\s*workgroup\s*=\s*(.+)/, Action => Site::ParseData::AddVar   },
+    ];
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## Set the system host name
-##
-########################################################################################################################
-########################################################################################################################
+#
+# GetFSInfo - Return smb.conf info
+#
+# Inputs:   None.
+#
+# Outputs:  [Ref to] struct of FS supplicant info
+#
+sub GetFSInfo {
 
-unless( defined $HostName and length $HostName ) {
-    print "\nMissing hostname argument\n";
-    HELP_MESSAGE();
-    exit -1;
+    return { Valid => 0 }
+        unless -r $FSConfigFile;
+
+    my $ConfigFile = Site::ParseData->new(Filename => $FSConfigFile, Matches  => $FSMatches);
+
+    my $FSInfo = $ConfigFile->Parse();
+
+    $FSInfo->{Valid} = 1;
+
+    return $FSInfo;
     }
 
-ChangeHostname($HostName);
-
-exit(0);
-
 
 ########################################################################################################################
 ########################################################################################################################
-##
-## ChangeHostname - Change system name, if requested
-##
-## Inputs:      New system name.
-##
-## Outputs:     None.
-##
-sub ChangeHostname {
-    my $NEW_HOSTNAME = shift;
+#
+# SetFSInfo - Write smb.conf info
+#
+# Inputs:   [Ref to] struct of WPA supplicant info
+#
+# Outputs:  None.
+#
+sub SetFSInfo {
+    my $FSInfo = shift;
 
-    die "Bad hostname $NEW_HOSTNAME"
-        if $NEW_HOSTNAME !~ /^\w*$/;
+    #
+    # If the original file did not exist, we simply punt. It probably means samba is not installed.
+    #
+    return
+        unless -r $FSConfigFile;
+    
+    my $ConfigFile = Site::ParseData->new(Filename => $FSConfigFile, Matches => $FSMatches);
+    $ConfigFile->Parse();
 
-    my $CURRENT_HOSTNAME = `cat /etc/hostname | tr -d " \t\n\r"`;
+    #
+    # Update the existing workgroup
+    #
+    $ConfigFile->{Sections}{Global}{Workgroup}{NewValue} = $FSInfo->{Workgroup};
 
-    if( $CURRENT_HOSTNAME eq $NEW_HOSTNAME ) {
-        print "Hostname unchanged ($CURRENT_HOSTNAME).\n";
-        return;
-        }
+    $ConfigFile->Update();
 
-    print "Changing hostname from $CURRENT_HOSTNAME to $NEW_HOSTNAME\n";
+# use Data::Dumper;
+# print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
 
-    `echo $HostName > /etc/hostname`;
-    `chown root:root /etc/hostname`;
-    `chmod 644       /etc/hostname`;
-
-    `sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$HostName/g" /etc/hosts`;
-    `chown root:root /etc/hosts`;
-    `chmod 644       /etc/hosts`;
     }
+
+
+
+#
+# Perl requires that a package file return a TRUE as a final value.
+#
+1;

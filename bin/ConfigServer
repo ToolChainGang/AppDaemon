@@ -81,6 +81,7 @@ use Site::IWList;
 use Site::Process;
 use Site::WSServer;
 use Site::NetInfo;
+use Site::FSInfo;
 
 ########################################################################################################################
 ########################################################################################################################
@@ -93,15 +94,14 @@ use Site::NetInfo;
 our $SERVER_PORT = 2021;
 
 our $Server;
-
 our $Config;
 
 our $SysName;
-
 our $NetDevs  = GetNetDevs();
 our $WPAInfo  = GetWPAInfo();
 our $DHCPInfo = GetDHCPInfo();
 our $NEInfo   = GetNetEnable();
+our $FSInfo   = GetFSInfo();
 
 ########################################################################################################################
 ########################################################################################################################
@@ -287,6 +287,11 @@ sub SetupConfig {
         }        
 
     #
+    # File sharing (ie: samba) info
+    #
+    $Config->{FSInfo} = $FSInfo;
+
+    #
     # Don't pass the existing WiFi password around
     #
     $Config->{WPAInfo} = $WPAInfo;
@@ -357,6 +362,11 @@ sub SetConfig {
     SetWPAInfo($NewState->{WPAInfo});
 
     #
+    # File sharing
+    #
+    SetFSInfo($NewState->{FSInfo});
+
+    #
     # Net enable
     #
     SetNetEnable($NewState->{DHCPInfo});
@@ -366,6 +376,45 @@ sub SetConfig {
     #
     SetDHCPInfo($NewState->{DHCPInfo});
 
+    #
+    # System name
+    #
+    ChangeHostname($NewState->{SysName});
+
     print Data::Dumper->Dump([$NewState],["NewConfig"])
         if $Verbose;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## ChangeHostname - Change system name, if requested
+##
+## Inputs:      New system name.
+##
+## Outputs:     None.
+##
+sub ChangeHostname {
+    my $NEW_HOSTNAME = shift;
+
+    die "Bad hostname $NEW_HOSTNAME"
+        if $NEW_HOSTNAME !~ /^\w*$/;
+
+    my $CURRENT_HOSTNAME = `cat /etc/hostname | tr -d " \t\n\r"`;
+
+    if( $CURRENT_HOSTNAME eq $NEW_HOSTNAME ) {
+        print "Hostname unchanged ($CURRENT_HOSTNAME).\n";
+        return;
+        }
+
+    print "Changing hostname from $CURRENT_HOSTNAME to $NEW_HOSTNAME\n";
+
+    `echo $NEW_HOSTNAME > /etc/hostname`;
+    `chown root:root      /etc/hostname`;
+    `chmod 644            /etc/hostname`;
+
+    `sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$NEW_HOSTNAME#/g" /etc/hosts`;
+    `chown root:root /etc/hosts`;
+    `chmod 644       /etc/hosts`;
     }

@@ -42,7 +42,7 @@ body {
     font-size:      150%;
     }
 
-.WifiText, .SysName, .WlanName, .IP, .Brown {
+.WifiText, .SysName, .WlanName, .IP, .Brown, .WorkgroupText {
     color:          brown;
     }
 

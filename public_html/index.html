@@ -22,13 +22,13 @@
         <tr><td style="width: 20%"></td><td style="width: 60%">
         <h1>Configure system: <span class="SysName"></span></h1>
         <table id="TOCTable">
-            <tr><td><img id="WB" class="NavButton" src="images/Wifi.png"    title="Wifi"        onclick=GotoPage("ScanningPage") /></td><td><h2>Wifi        </h2></td></tr>
-            <tr><td><img id="SN" class="NavButton" src="images/SysName.png" title="System name" onclick=GotoPage("SysNamePage")  /></td><td><h2>System Name </h2></td></tr>
-            <tr><td><img id="NB" class="NavButton" src="images/Network.png" title="Network"     onclick=GotoPage("NetworkPage")  /></td><td><h2>Networking  </h2></td></tr>
-            <tr><td><img id="SB" class="NavButton" src="images/Sharing.png" title="Sharing"     onclick=GotoPage("SharingPage")  /></td><td><h2>Sharing     </h2></td></tr>
-            <tr><td><img id="AB" class="NavButton" src="images/About.png"   title="About"       onclick=GotoPage("AboutPage")    /></td><td><h2>About       </h2></td></tr>
+            <tr><td><img id="WB" class="NavButton" src="images/Wifi.png"    title="Wifi"        onclick=GotoPage("ScanningPage") /></td><td><h2><a onclick=GotoPage("ScanningPage") >Wifi        </a></h2></td></tr>
+            <tr><td><img id="SN" class="NavButton" src="images/SysName.png" title="System name" onclick=GotoPage("SysNamePage")  /></td><td><h2><a onclick=GotoPage("SysNamePage")  >System Name </a></h2></td></tr>
+            <tr><td><img id="NB" class="NavButton" src="images/Network.png" title="Network"     onclick=GotoPage("NetworkPage")  /></td><td><h2><a onclick=GotoPage("NetworkPage")  >Networking  </a></h2></td></tr>
+            <tr><td><img id="SB" class="NavButton" src="images/Sharing.png" title="Sharing"     onclick=GotoPage("SharingPage")  /></td><td><h2><a onclick=GotoPage("SharingPage")  >Sharing     </a></h2></td></tr>
+            <tr><td><img id="AB" class="NavButton" src="images/About.png"   title="About"       onclick=GotoPage("AboutPage")    /></td><td><h2><a onclick=GotoPage("AboutPage")    >About       </a></h2></td></tr>
             <tr><td><h2>&nbsp;</h2></td></tr>
-            <tr><td><img class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   /></td><td><h2>Review and save </h2></td></tr>
+            <tr><td><img     class="NavButton" src="images/Review.png"  title="Review and save" onclick=GotoPage("ReviewPage")   /></td><td><h2><a onclick=GotoPage("ReviewPage")       >Review and save </a></h2></td></tr>
             </table>
         </td></tr></table>
     </div>
@@ -73,7 +73,7 @@
         </center>
     <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick="ChangeSysName()"  /></td><td><h2>Back</h2></td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick="ChangeSysName()"     /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 
@@ -85,20 +85,21 @@
 
     <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=UpdateIF()             /></td><td><h2>Back</h2></td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=UpdateIF()            /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 
 <div id="SharingPage" class="PageDiv">
-    <h1>File sharing:</h1>
+    <h1>Current workgroup: <span class="WorkgroupText" id="CurrentWorkgroup"></span></h1>
 
     <center>
-        Not yet implemented
+        <h1>Enter new workgroup name:</h1>
+        <input id="WGName" class="WGName" name="WorkgroupName" onKeyPress="EnterWGName(event)" \>
         </center>
 
     <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
-        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=GotoPage("TOCPage")    /></td><td><h2>Back</h2></td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick=ChangeWGName()        /></td><td><h2>Back</h2></td></tr>
         </table>
     </div>
 

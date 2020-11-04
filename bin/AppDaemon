@@ -214,6 +214,22 @@ $SIG{USR1} = sub {
 chdir("/root/AppDaemon/public_html");
 
 #
+# Disable interfaces requested by user
+#
+our $NEInfo = GetNetEnable();
+foreach my $Interface (keys %{$NEInfo}) {
+
+    next
+        unless lc($NEInfo->{$Interface}) eq "disable";
+
+    my $Command = "ifconfig $Interface down";
+    my $Results = $Command;
+
+    print "$Command: $Results\n"
+        if $Verbose
+    }
+
+#
 # Start the AppDaemon
 #
 # The -v option prints out debug information
