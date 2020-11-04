@@ -66,6 +66,8 @@
 
     var NameInput;
 
+    var UnchangedText = '<span class="Unchanged">(no change)</span>';
+
     //
     // One line of the "devices" table listing
     //
@@ -523,7 +525,7 @@
         // SysName
         //
         if( document.getElementById("SN") != undefined ) {
-            if( Config.SysName == OrigConfig.SysName ) { AddReviewLine("System Name: "    ,"(no change)" ); }
+            if( Config.SysName == OrigConfig.SysName ) { AddReviewLine("System Name: "    ,UnchangedText ); }
             else                                       { AddReviewLine("New system Name: ",Config.SysName); }
             }
 
@@ -531,6 +533,7 @@
         // Wifi SSID and password
         //
         if( document.getElementById("WB") != undefined ) {
+            TableText = UnchangedText;
             if( Config.WPAInfo.SSID     != OrigConfig.WPAInfo.SSID ||
                 Config.WPAInfo.Password != OrigConfig.WPAInfo.Password ) {
                 TableText = Config.WPAInfo.SSID;
@@ -541,9 +544,6 @@
                     TableText += " with no password";
                     }
                 }
-            else {
-                TableText = "(no change)";
-                }
             AddReviewLine("Wifi: ",TableText);
             }
 
@@ -552,11 +552,9 @@
         //
         if( document.getElementById("SB") != undefined &&
             document.getElementById("SB").style.display != "none" ) {
+            TableText = UnchangedText;
             if( Config.FSInfo.Workgroup != OrigConfig.FSInfo.Workgroup ) {
                 TableText = Config.FSInfo.Workgroup;
-                }
-            else {
-                TableText = "(no change)";
                 }
             AddReviewLine("Workgroup: ",TableText);
             }
@@ -566,6 +564,25 @@
         //
         if( document.getElementById("NB") != undefined ) {
             Config.NetDevs.forEach(function (IF) { 
+
+                //
+                // If Enabled and DHCP are then same, then
+                //   ...only check IP config if we're enabled and not using DHCP
+                //
+                if( Config.DHCPInfo[IF].Enabled == OrigConfig.DHCPInfo[IF].Enabled &&
+                    Config.DHCPInfo[IF].DHCP    == OrigConfig.DHCPInfo[IF].DHCP   ) {
+
+                    if( !Config.DHCPInfo[IF].Enabled ||
+                         Config.DHCPInfo[IF].DHCP    ||
+                        (Config.DHCPInfo[IF].IPAddr == Config.DHCPInfo[IF].IPAddr ||
+                         Config.DHCPInfo[IF].Router == Config.DHCPInfo[IF].Router ||
+                         Config.DHCPInfo[IF].DNS2   == Config.DHCPInfo[IF].DNS2   ||
+                         Config.DHCPInfo[IF].DNS1   == Config.DHCPInfo[IF].DNS1   ) ) {
+                        AddReviewLine(IF + ": ",UnchangedText);
+                        return;
+                        }
+                    }
+
                 if( !Config.DHCPInfo[IF].Enabled ) {
                     TableText = "disabled";
                     }

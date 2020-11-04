@@ -326,7 +326,7 @@ sub SetDHCPInfo {
         unless -r $DHCPConfigFile;
     
     my $ConfigFile = Site::ParseData->new(Filename => $DHCPConfigFile, Matches => $DHCPMatches);
-    my $NEInfo = $ConfigFile->Parse();
+    $ConfigFile->Parse();
 
     #
     # Update the existing vars, and add new vars as needed
@@ -338,7 +338,6 @@ sub SetDHCPInfo {
         # No original DHCP info.
         #
         if( not defined $IF ) {
-
             #
             # Not enabled anyway - Skip
             #
@@ -395,8 +394,9 @@ sub SetDHCPInfo {
 
     $ConfigFile->Update();
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
+# use Data::Dumper;
+# print Data::Dumper->Dump([$ConfigFile],[$ConfigFile->{Filename}]);
+
     }
 
 

@@ -382,6 +382,7 @@ sub SetConfig {
     #
     ChangeHostname($NewState->{SysName});
 
-#    print Data::Dumper->Dump([$NewState],["NewConfig"])
-#        if $Verbose;
+#     print Data::Dumper->Dump([$NewState],["NewConfig"])
+#         if $Verbose;
+
     }

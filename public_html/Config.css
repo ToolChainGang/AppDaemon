@@ -46,6 +46,10 @@ body {
     color:          brown;
     }
 
+.Unchanged {
+    color:          grey;
+    }
+
 input:disabled {
     background:     silver;
     }

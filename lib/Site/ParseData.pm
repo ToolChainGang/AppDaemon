@@ -276,8 +276,6 @@ sub Update {
     #              ->{LineNo}          Line # where value was found
     #              ->{NewValue}        New value to set during update call
     #
-    my $Changed = 0;
-
     foreach my $SectionName (keys %{$self->{Sections}}) {
         foreach my $VarName (keys %{$self->{Sections}{$SectionName}}) {
             my $Var = $self->{Sections}{$SectionName}{$VarName};
@@ -298,12 +296,8 @@ sub Update {
                 unless $Var->{NewValue} ne $Var->{Value};
 
             $self->{Lines}[$Var->{LineNo}] =~ s/\Q$Var->{Value}\E/\Q$Var->{NewValue}\E/g;
-            $Changed = 1;
             }
         }
-
-    return
-        unless $Changed;
 
     #
     # The write_file() function doesn't have an "unchomp" option?
@@ -314,6 +308,7 @@ sub Update {
 
 #use Data::Dumper;
 #print Data::Dumper->Dump([$self->{Lines}],["$self->{Filename}"]);
+
     }
 
 
