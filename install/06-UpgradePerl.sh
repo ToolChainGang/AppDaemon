@@ -49,7 +49,7 @@ PATH="$PATH:$HOME/AppDaemon/bin"
 #
 # Ensure we're being run as root
 #
-if [ "$EUID" -ne 0 ]
+if [ "$EUID" -ne 0 ]; then
     echo
     echo "Must be run as root" 
     echo

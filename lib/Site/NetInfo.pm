@@ -276,8 +276,8 @@ END_WPA
             }
         }
 
-use Data::Dumper;
-print Data::Dumper->Dump([$ConfigFile],["$ConfigFile->{Filename}"]);
+#use Data::Dumper;
+#print Data::Dumper->Dump([$ConfigFile],["$ConfigFile->{Filename}"]);
 
     $ConfigFile->Update();
     }
@@ -452,7 +452,7 @@ sub SetNetEnable {
     #
     foreach my $IFName (keys %{$EnbInfo}) {
 
-        my $Enable = $EnbInfo->{$IFName} ? "enable" : "disable";
+        my $Enable = $EnbInfo->{$IFName}{Enabled} ? "enable" : "disable";
 
         if( defined $ConfigFile->{Sections}{Global}{$IFName} ) {
             $ConfigFile->{Sections}{Global}{$IFName}{NewValue} = $Enable;

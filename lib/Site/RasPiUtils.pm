@@ -24,6 +24,7 @@
 ##      NumUsers()              # Return number of logged-in users of the system
 ##      ListInterfaces()        # Return a list of interfaces on the system
 ##      DiskExpanded()          # Return TRUE if disk is expanded
+##      ChangeHostname($Name)   # Change the hostname files
 ##
 ##  ISA
 ##
@@ -67,6 +68,7 @@ our @EXPORT  = qw(&IAmRoot
                   &NumUsers
                   &ListInterfaces
                   &DiskExpanded
+                  &ChangeHostname
                   );               # Export by default
 
 ########################################################################################################################
@@ -138,6 +140,40 @@ sub DiskExpanded {
     `DiskExpanded`;
 
     return $? == 0;
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## ChangeHostname - Change system name, if requested
+##
+## Inputs:      New system name.
+##
+## Outputs:     None.
+##
+sub ChangeHostname {
+    my $NEW_HOSTNAME = shift;
+
+    die "Bad hostname $NEW_HOSTNAME"
+        if $NEW_HOSTNAME !~ /^\w*$/;
+
+    my $CURRENT_HOSTNAME = `cat /etc/hostname | tr -d " \t\n\r"`;
+
+    if( $CURRENT_HOSTNAME eq $NEW_HOSTNAME ) {
+##        print "Hostname unchanged ($CURRENT_HOSTNAME).\n";
+        return;
+        }
+
+##    print "Changing hostname from $CURRENT_HOSTNAME to $NEW_HOSTNAME\n";
+
+    `echo $NEW_HOSTNAME > /etc/hostname`;
+    `chown root:root      /etc/hostname`;
+    `chmod 644            /etc/hostname`;
+
+    `sed -i "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" /etc/hosts`;
+    `chown root:root /etc/hosts`;
+    `chmod 644       /etc/hosts`;
     }
 
 

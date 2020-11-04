@@ -275,20 +275,24 @@
     //
     function ChooseSSID(SSID) {
         WifiList.forEach(function (This) { 
-            if( This.SSID == ChosenSSID )
+            if( This.SSID == SSID )
                 Wifi = This;
             });
 
         if( Wifi == undefined ) {
-            alert("SSID " + ChosenSSID + " not in list.");
+            alert("SSID " + SSID + " not in list.");
             GotoPage("ScanningPage");
             return;
             }
 
-        if( Wifi.Encryption == "on" ) {
-            document.getElementById("PasswordField").style.display = "block";
-            document.getElementById("EnterWifi").innerHTML = SSID;
+        document.getElementById("EnterWifi").innerHTML = SSID;
+
+        if( Wifi.Encryption != "on" ) {
+            ChangeSSID();
+            return;
             }
+
+        document.getElementById("PasswordField").style.display = "block";
         }
 
     //
@@ -312,7 +316,7 @@
     //
     // ChangeSysName - Processed entered system names
     //
-    function ChangeSSID(NewName) {
+    function ChangeSSID() {
         if( Wifi != undefined ) {       // If user selected an SSID
             Config.WPAInfo.SSID     = document.getElementById("EnterWifi").innerHTML;
             Config.WPAInfo.Password = document.getElementById("Password").value;
@@ -530,11 +534,11 @@
             if( Config.WPAInfo.SSID     != OrigConfig.WPAInfo.SSID ||
                 Config.WPAInfo.Password != OrigConfig.WPAInfo.Password ) {
                 TableText = Config.WPAInfo.SSID;
-                if( Wifi.Encryption ) {
-                    TableText += "with password";
+                if( Wifi.Encryption == "on" ) {
+                    TableText += " with password";
                     }
                 else {
-                    TableText += "with no password";
+                    TableText += " with no password";
                     }
                 }
             else {
