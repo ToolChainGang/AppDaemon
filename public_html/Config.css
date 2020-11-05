@@ -35,6 +35,10 @@ body {
     -moz-border-radius: 15px;
     }
 
+.NoBotMargin {
+    margin-bottom:  0;
+    }
+
 .AboutLines {
     padding:        0;
     border:         0;

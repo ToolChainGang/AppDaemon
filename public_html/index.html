@@ -19,8 +19,10 @@
 
 <div id="TOCPage" class="PageDiv">
     <table class="TOCColumns" summary="System Configuration">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Configure system: <span class="SysName"></span></h1></td></tr>
+         </table>
+    <table class="TOCColumns" summary="System Configuration">
         <tr><td style="width: 20%"></td><td style="width: 60%">
-        <h1>Configure system: <span class="SysName"></span></h1>
         <table id="TOCTable">
             <tr><td><img id="WB" class="NavButton" src="images/Wifi.png"    title="Wifi"        onclick=GotoPage("ScanningPage") /></td><td><h2><a onclick=GotoPage("ScanningPage") >Wifi        </a></h2></td></tr>
             <tr><td><img id="SN" class="NavButton" src="images/SysName.png" title="System name" onclick=GotoPage("SysNamePage")  /></td><td><h2><a onclick=GotoPage("SysNamePage")  >System Name </a></h2></td></tr>
@@ -38,12 +40,12 @@
     </div>
 
 <div id="SSIDPage" class="PageDiv">
+    <table class="TOCColumns" summary="About system">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Currently using: <span class="WifiText" id="CurrentSSID"></span></h1></td></tr>
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Which Wifi would you like to use?</h1></td></tr>
+        </table>
 
-    <h1>Currently using: <span class="WifiText" id="CurrentSSID"></span></h1>
-    <h1>Which Wifi would you like to use?</h1>
-
-    <center><table id="WifiNames"></table>
-        </center>
+    <table id="WifiNames"></table>
 
     <div id="PasswordField" style="display: none">
         <h1>Enter password for: <span id="EnterWifi" class="WifiText"></span></h1>
@@ -59,6 +61,10 @@
     </div>
 
 <div id="SysNamePage" class="PageDiv">
+    <table class="TOCColumns" summary="About system">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Current name: <span class="SysName"></span></h1></td></tr>
+        </table>
+
     <center>
         <h1>Enter new system name:</h1>
         <input id="SysName" class="SysName" name="SysName" onKeyPress="EnterSysName(event)" \>
@@ -78,7 +84,9 @@
     </div>
 
 <div id="NetworkPage" class="PageDiv">
-    <h1>Network devices:</h1>
+    <table class="TOCColumns" summary="About system">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1 class="NoBotMargin">Network devices:</h1></td></tr>
+        </table>
 
     <table id="IFTable" summary="Network devices">
         </table>
@@ -90,7 +98,9 @@
     </div>
 
 <div id="SharingPage" class="PageDiv">
-    <h1>Current workgroup: <span class="WorkgroupText" id="CurrentWorkgroup"></span></h1>
+    <table class="TOCColumns" summary="About system">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Current workgroup: <span class="WorkgroupText" id="CurrentWorkgroup"></span></h1></td></tr>
+        </table>
 
     <center>
         <h1>Enter new workgroup name:</h1>
@@ -104,8 +114,11 @@
     </div>
 
 <div id="AboutPage" class="PageDiv">
+    <table class="TOCColumns" summary="About system">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>About:&nbsp;<span class="SysName"></span></h1></td></tr>
+        </table>
+
     <table id="InfoLines" summary="System Configuration">
-        <tr><td style="width: 10%"><h1>About:&nbsp;</h1></td><td><h1><span class="SysName"></span></h1></td></tr>
         </table>
 
     <table class="NavTable">

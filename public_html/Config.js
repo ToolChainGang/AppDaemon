@@ -72,9 +72,9 @@
     // One line of the "devices" table listing
     //
     var IFTemplate = '\
-        <tr><td style="width: 20%">&nbsp;</td><td style="width: 20%"><h2>$IF</h2></td><td></td></tr>                \
-        <tr><td style="width: 20%">&nbsp;</td><td colspan="2">                                                      \
-            <input type="checkbox" id=$IF-Enabled" name="$IF-Enabled" $EN onchange="ToggleEnable(this)" >Enabled    \
+        <tr><td style="width: 20%">&nbsp;</td><td style="width: 20%"><h2 class="NoBotMargin">$IF</h2></td><td></td></tr> \
+        <tr><td style="width: 20%">&nbsp;</td><td colspan="2">                                                           \
+            <input type="checkbox" id=$IF-Enabled" name="$IF-Enabled" $EN onchange="ToggleEnable(this)" >Enabled         \
             </td></tr>';
 
     //
@@ -87,7 +87,7 @@
             </td></tr>                                                                                              \
         <tr><td style="width: 20%">&nbsp;</td><td colspan="3">                                                      \
             <table id="$IF-Static" summary="$IF-Static">                                                            \
-                <tr><td style="width: 5%">&nbsp;</td><td style="width: 30%">&nbsp;</td><td>&nbsp;</td></tr>         \
+                <tr style="display: none"><td style="width: 5%">&nbsp;</td><td style="width: 30%">&nbsp;</td><td>&nbsp;</td></tr>         \
                 <tr><td>&nbsp;</td><td>IP/mask:</td><td><input $DDIS class="IP" id="$IF-IPAddr" value="$IPAddr" \></td></tr> \
                 <tr><td>&nbsp;</td><td>Router :</td><td><input $DDIS class="IP" id="$IF-Router" value="$Router" \></td></tr> \
                 <tr><td>&nbsp;</td><td>DNS1   :</td><td><input $DDIS class="IP" id="$IF-DNS1"   value="$DNS1"   \></td></tr> \
@@ -240,12 +240,13 @@
 
         var WifiNames = document.getElementById("WifiNames");
 
-        WifiNames.innerHTML = "<tr>"               +
-                              "<td>&nbsp;   </td>" +
-                              "<td>Network  </td>" +
-                              "<td>&nbsp;&nbsp;Signal&nbsp;&nbsp;</td>" +
-                              "<td>Password</td>"  +
-                              "</tr>";
+        WifiNames.innerHTML = '<tr>'               +
+                              '<td style="width: 30%;">' +
+                              '<td>&nbsp;   </td>' +
+                              '<td>Network  </td>' +
+                              '<td>&nbsp;&nbsp;Signal&nbsp;&nbsp;</td>' +
+                              '<td>Password</td>'  +
+                              '</tr>';
 
         WifiList.forEach(function (Wifi) { 
             if( Wifi.SSID == "--none--" )
@@ -261,12 +262,13 @@
     // WifiTableLine
     //
     function WifiTableLine(SSID,Quality,PWNeeded) {
-        var TableLine = "<tr>" + 
-                        "<td><button class='SSIDButton' onclick=ChooseSSID('" + SSID + "') >Use</button></td>" +
-                        "<td class=\"WifiText\">" + SSID    + "</td>" +
-                        "<td><center>" + Quality + "</center></td>" +
-                        "<td><center>" + (PWNeeded ? "yes" : "") + "</center></td>" +
-                        "</tr>";
+        var TableLine = '<tr>' + 
+                        '<td style="width: 30%;">' +
+                        '<td><button class="SSIDButton" onclick=ChooseSSID("' + SSID + '") >Use</button></td>' +
+                        '<td class="WifiText">' + SSID    + '</td>' +
+                        '<td><center>' + Quality + '</center></td>' +
+                        '<td><center>' + (PWNeeded ? 'yes' : '') + '</center></td>' +
+                        '</tr>';
 
         return TableLine;
         }
@@ -503,12 +505,12 @@
     //
     function PopulateAboutPage() {
         var InfoLines = document.getElementById("InfoLines");
-        InfoLines.innerHTML = '<tr><td style="width: 10%"><h1>About:&nbsp;</h1></td><td><h1><span class="' + OrigConfig.SysName + '"></span></h1></td></tr>';
+        InfoLines.innerHTML = "";
 
         Config.About.forEach(function (InfoLine) { 
             var FmtLine = InfoLine.replace(": ",":<b> ") + "</b>";
            
-            InfoLines.innerHTML += '<tr><td></td><td><pre class="AboutLines" >' + FmtLine + '</pre></td></tr>';
+            InfoLines.innerHTML += '<tr><td style="width: 20%">&nbsp;</td><td><pre class="AboutLines" >' + FmtLine + '</pre></td></tr>';
             });
         }
 

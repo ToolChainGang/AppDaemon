@@ -10,3 +10,5 @@
 #   eth0:   disable
 #
 wlan0:  enable
+eth0: enable
+wlan1: enable
