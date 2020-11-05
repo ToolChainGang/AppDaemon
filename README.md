@@ -1,7 +1,5 @@
 # AppDaemon: Easy end-user configuration for RasPi systems
 
-# NOTE: Under construction, check back around Nov 8, 2020 for working system (this line will be removed)
-
 How does an end-user configure a RasPi product?
 
 Specifically, if you have a product with an embedded RasPi, how does the user:
