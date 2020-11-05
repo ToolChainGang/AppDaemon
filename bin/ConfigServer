@@ -227,24 +227,7 @@ sub WebRequest {
         Message("ConfigServer: GetWifiList()")
             if $Verbose;
         $Request->{Error} = "No error.";
-        my $IWList = GetIWList();
-        #
-        # Collapse the SSIDs from all devices into one list
-        #
-        my $List = [];
-        foreach my $IFName (keys %{$IWList}) {
-            foreach my $Wifi (@{$IWList->{$IFName}}) {
-                next
-                    if $Wifi->{SSID} eq "--none--";
-
-                next
-                    if grep { $_->{SSID} eq $Wifi->{SSID} } @{$List};
-
-                push @{$List},$Wifi;
-                }
-            }
-        $Request->{State} = $List;
-
+        $Request->{State} = SetupIWList();
 # print Data::Dumper->Dump([$Request->{State}],[qw(IWList)]);
         }
 
@@ -260,6 +243,43 @@ sub WebRequest {
     # Pack up the error message and return the struct to the caller
     #
     SendResponse($Conn,$Request);
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# SetupIWList - Get the IWList and setup the state response.
+#
+# Inputs:      None.
+#
+# Outputs:     IWList array of SSID info
+#
+sub SetupIWList {
+
+    my $IWList = GetIWList();
+
+    #
+    # Collapse the SSIDs from all devices into one list
+    #
+    my $SSIDList = [];
+    foreach my $IFName (keys %{$IWList}) {
+        foreach my $Wifi (@{$IWList->{$IFName}}) {
+            next
+                if $Wifi->{SSID} eq "--none--";
+
+            next
+                if grep { $_->{SSID} eq $Wifi->{SSID} } @{$SSIDList};
+
+            push @{$SSIDList},$Wifi;
+            }
+        }
+    #
+    # Sort by strongest signal - that's probably the one the user wants
+    #
+    @{$SSIDList} = sort { $b->{QualityPct} <=> $a->{QualityPct} } @{$SSIDList};
+
+    return $SSIDList;
     }
 
 
