@@ -218,6 +218,7 @@ sub WebRequest {
         Message("ConfigServer: SetConfig()")
             if $Verbose;
         SetConfig($Request->{Arg1},$Config,$Verbose);
+        `reboot`;
         }
 
     #
