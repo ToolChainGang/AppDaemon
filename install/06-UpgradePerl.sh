@@ -104,6 +104,8 @@ export PERL_CANARY_STABILITY_NOPROMPT=1
 cpan Carp
 cpan File::Basename
 cpan File::Slurp
+cpan JSON
+cpan Net::WebSocket:Server
 cpan RPi::Pin
 cpan RPi::Const
 

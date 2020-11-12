@@ -20,6 +20,7 @@
 ##
 ##  FUNCTIONS
 ##
+##      Reboot()                # Reboot the system
 ##      IAmRoot()               # Return TRUE if user is running as root
 ##      NumUsers()              # Return number of logged-in users of the system
 ##      ListInterfaces()        # Return a list of interfaces on the system
@@ -64,12 +65,31 @@ use Carp;
 
 our $VERSION = '2020.08_16';
 
-our @EXPORT  = qw(&IAmRoot
+our @EXPORT  = qw(&Reboot
+                  &IAmRoot
                   &NumUsers
                   &ListInterfaces
                   &DiskExpanded
                   &ChangeHostname
                   );               # Export by default
+
+########################################################################################################################
+########################################################################################################################
+##
+## Reboot - Reboot the system
+##
+## Inputs:      None.
+##
+## Outputs:     None.
+##
+## NOTE: Function does not return!
+##
+sub Reboot {
+    `reboot`;
+
+    while(1) {};
+    }
+
 
 ########################################################################################################################
 ########################################################################################################################

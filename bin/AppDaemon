@@ -131,6 +131,7 @@ my $LOGDIR    = "/root/AppDaemon/logs";
 
 my $HTTPPort = IAmRoot() ? 80 : 8000;
 my $WebCmd   = "python2 -m HTTPServer $HTTPPort";
+my $CfgCmd   = "/root/AppDaemon/bin/ConfigServer";
 my $APCmd    = "create_ap -n --redirect-to-localhost $Interface $SSID";
 my $EndAPCmd = "create_ap --stop $Interface";
 
@@ -184,7 +185,7 @@ if( $ConfigGPIO >= 0 ) {
 if( $LEDGPIO >= 0 ) {
     $LED = RPi::Pin->new($LEDGPIO);
     $LED->mode(OUTPUT);
-    $LED->write(LOW);
+    $LED->write(0);
     }
 
 #
@@ -292,7 +293,7 @@ while(1) {
         $ConnectTimer--;
 
         if( $ConnectTimer <= 0 ) {
-            $LED->write();                  # Turn off LED
+            $LED->write(0);                     # Turn off LED
             $State = IDLE;
             StopAPD();
             Message("State: IDLE (timeout)")
@@ -355,6 +356,7 @@ sub StartAPD {
 
     Message("Starting config web server");
     BackgroundCommand($WebCmd);
+    BackgroundCommand($CfgCmd);
     }
 
 ########################################################################################################################
@@ -370,7 +372,14 @@ sub StopAPD {
 
     Message("Stopping web and Config servers");
 
-#TimeoutCommand("reboot");
+
+    #
+    # For some reason, restarting the dhcp daemon puts the wifi in an unconfigured
+    #   state. It works, but not using the configuration specified in /etc/dhcpcd.conf
+    #
+    # I don't know why this is, but hardware reset seems to fix it.
+    #
+TimeoutCommand("reboot");
 
     TimeoutCommand($EndAPCmd);
 
