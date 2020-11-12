@@ -343,7 +343,7 @@ sub WatchUsers {
 ## Outputs:  None.
 ##
 sub Message {
-    my $Msg  = shift;
+    my $Msg  = shift // "";
     my $Fail = shift // 0;
 
     #

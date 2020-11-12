@@ -101,6 +101,7 @@ use File::Basename;
 use lib "/root/AppDaemon/lib";
 
 use Site::Process;
+use Site::NetInfo;
 use Site::RasPiUtils;
 use Site::CommandLine;
 

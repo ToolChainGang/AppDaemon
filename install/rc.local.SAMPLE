@@ -108,8 +108,8 @@ fi
 #
 set +e
 
-ConfigGPIO = 22;        # Config switch GPIO22, Connector pin 15, GPIO (command) BCM 22
-LEDGPIO    = 21;        # Config LED    GPIO21, Connector pin 40, GPIO (command) BCM 21
+ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
+LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
 
 #nohup /root/AppDaemon/bin/AppDaemon   --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
 nohup /root/AppDaemon/bin/AppDaemon -v --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &

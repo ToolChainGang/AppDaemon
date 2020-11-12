@@ -1,0 +1,245 @@
+#!/usr/bin/perl
+#
+########################################################################################################################
+########################################################################################################################
+##
+##      Copyright (C) 2020 Peter Walsh, Milford, NH 03055
+##      All Rights Reserved under the MIT license as outlined below.
+##
+##  FILE
+##
+##      GPIOTest
+##
+##  DESCRIPTION
+##
+##      Test the GPIO settings
+##
+##      This uses the same GPIO logic as the AppDaemon, and will print out changes to the button interface
+##        and flash the LED but won't start the AP or change the network settings.
+##
+##  USAGE
+##
+##      GPIOTest --config-gpio=<gpio#> --led-gpio=<gpio#>
+##
+##      where:
+##
+##          --config-gpio=#         GPIO of button to enter config mode
+##
+##          --led-gpio=#            GPIO of LED (to blink when in AP mode)
+##
+##          If led-gpio is not given, will not attempt to blink anything when entering config mode.
+##
+##  NOTES
+##
+##      RUN AS ROOT
+##
+########################################################################################################################
+########################################################################################################################
+##
+##  MIT LICENSE
+##
+##  Permission is hereby granted, free of charge, to any person obtaining a copy of
+##    this software and associated documentation files (the "Software"), to deal in
+##    the Software without restriction, including without limitation the rights to
+##    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+##    of the Software, and to permit persons to whom the Software is furnished to do
+##    so, subject to the following conditions:
+##
+##  The above copyright notice and this permission notice shall be included in
+##    all copies or substantial portions of the Software.
+##
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+##    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+##    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+##    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+##    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+##    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##
+########################################################################################################################
+########################################################################################################################
+
+use strict;
+use warnings;
+use Carp;
+
+use RPi::Pin;
+use RPi::Const qw(:all);
+
+use lib "/root/AppDaemon/lib";
+
+use Site::CommandLine;
+
+our $VERSION = 'AppDaemon2020-11-10';
+
+########################################################################################################################
+########################################################################################################################
+##
+## Data declarations
+##
+########################################################################################################################
+########################################################################################################################
+
+use constant INACTIVITY_TIMEOUT => 300; # Seconds to wait for connection after button press
+
+my $ConfigGPIO = -1;    # Config switch
+my $LEDGPIO    = -1;    # Config LED
+
+my $Switch;
+my $LED;
+
+#
+# Overall system State, see below
+#
+use constant IDLE         => 1;
+use constant WAIT_CONNECT => 2;
+use constant CONNECTED    => 3;
+
+my $State = IDLE;
+
+my $ConnectTimer;   # Time to wait for user to connect to system, before going back to IDLE
+
+$| = 1;             # Flush output immediately
+
+########################################################################################################################
+########################################################################################################################
+##
+## Command line
+##
+##      GPIOTest [-v] --config-gpio=<gpio#> --led-gpio=<gpio#>
+##
+########################################################################################################################
+########################################################################################################################
+
+ParseCommandLine("config-gpio=i" => \$ConfigGPIO,
+                 "led-gpio=i"    => \$LEDGPIO);
+
+if( $ConfigGPIO >= 0 ) {
+    $Switch = RPi::Pin->new($ConfigGPIO);
+    $Switch->mode(INPUT);
+    $Switch->pull(PUD_UP);
+    }
+
+if( $LEDGPIO >= 0 ) {
+    $LED = RPi::Pin->new($LEDGPIO);
+    $LED->mode(OUTPUT);
+    $LED->write(LOW);
+    }
+
+########################################################################################################################
+########################################################################################################################
+##
+## GPIOTest
+##
+########################################################################################################################
+########################################################################################################################
+
+chdir("/root/AppDaemon/public_html");
+
+#
+# The -v option prints out debug information
+#
+Message("GPIOTest is up and running.");
+Message("Using ConfigGPIO: $ConfigGPIO");
+Message("Using    LEDGPIO: $LEDGPIO");
+Message("Initial config  : " . ($Switch->read()));
+
+Message("State: IDLE");
+
+########################################################################################################################
+#
+# At this point, everything should be working. Keep checking for the config switch
+#
+while(1) {
+
+    sleep(1);
+
+    #
+    # IDLE: Wait for config button press
+    #
+    if( $State == IDLE ) {
+
+        if( $ConfigGPIO >= 0 ) {
+            next
+                unless $Switch->read() == 0;
+            }
+
+        Message("");
+        Message("Config button: pressed");
+        Message("State: WAIT_CONNECT");
+
+        $ConnectTimer = INACTIVITY_TIMEOUT;
+        $State        = WAIT_CONNECT;
+
+        next;
+        }
+
+    #
+    # WAIT_CONNECT: Wait for user to connect and call up page
+    #
+    if( $State == WAIT_CONNECT ) {
+        if( $LEDGPIO >= 0 ) {
+            $LED->write($ConnectTimer % 2);     # Blink the LED
+            Message("LED: " . ($ConnectTimer % 2));
+            }
+
+        #
+        # If no connections are made in INACTIVITY_TIMEOUT seconds, go back to idle
+        #
+        $ConnectTimer--;
+
+        if( $ConnectTimer <= 0 ) {
+            $LED->write();                  # Turn off LED
+            Message("LED: off");
+            $State = IDLE;
+            Message("State: IDLE (timeout)");
+            }
+
+        next;
+        }
+
+    #
+    # CONNECTED: Keep the LED on, and let the Dev process do its thing
+    #
+    if( $State == CONNECTED ) {
+
+        if( $LEDGPIO >= 0 ) {
+            $LED->write(1);         # Turn on LED while connected
+            Message("LED: On");
+            }
+
+        #
+        # If no actions are taken in CONNECTED mode, go back to idle
+        #
+        $ConnectTimer--;
+
+        if( $ConnectTimer <= 0 ) {
+
+            if( $LEDGPIO >= 0 ) {
+                $LED->write(0);         # Turn off LED
+                Message("LED: off");
+                }
+
+            $State = IDLE;
+            Message("State: IDLE (timeout)");
+            }
+
+        next;
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## Message - Show message to the user
+##
+## Inputs:      Msg        Message to print
+##              Fail       If message indicates a failure, (==1) print in Red, else (==0) print in Green
+##
+## Outputs:  None.
+##
+sub Message {
+    my $Msg  = shift;
+
+    print "**** AppDaemon: $Msg\n";
+    }

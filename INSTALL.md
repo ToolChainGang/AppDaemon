@@ -43,7 +43,17 @@ Verify that the output contains nothing but a list of "newest version" messages.
 
 ```
 
-### Step 3: Install the test application
+### Step 3: Test your GPIO hardware
+
+The install dir contains an app to test the GPIO settings in the system. It uses the same logic
+as the AppDaemon, but doesn't mess with the network interfaces or make any system changes.
+
+Execute that app with your GPIO settings and verify that the config button works, the LED blinks,
+and so on.
+
+> GPIOTest --config-gpio=22 --led-gpio=21 
+
+### Step 4: Install the test application
 
 The install dir contains a sample application (SampleApp) that can be used to test the system.
 
@@ -81,7 +91,7 @@ A sample rc.local file that does this is included with the project, so for a qui
 > reboot
 ```
 
-### Step 4: Connect the AppDaemon to your application
+### Step 5: Connect the AppDaemon to your application
 
 Once everything is running the /root/AppDaemon/install directory is no longer needed - you can delete it.
 
