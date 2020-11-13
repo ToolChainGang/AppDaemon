@@ -38,7 +38,6 @@
 //              { KeyMGMT}->'WPA-PSK',
 //              {Password}->'(something)',
 //              { Country}->'US'
-//              { Changed}-> 1          // Set by config page if user changes something
 //          {DHCPInfo}->
 //              {$IF}->                 // ex: $Config.DHCPInfo.wlan0->
 //                  {Enabled}->0,

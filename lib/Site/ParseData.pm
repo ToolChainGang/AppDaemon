@@ -18,16 +18,17 @@
 ##      ->{Filename}                    File of config info we parsed
 ##      ->{Lines}[]                     Array of lines read from file
 ##      ->{Matches}                     Matches to look for in file
+##      ->{Parsed}                      TRUE if data (file or lines) successfully parsed
+##      ->{Changed}                     TRUE if something changed after parsed
 ##      ->{Sections}                    Hash of sections by name
 ##          ->{$SecName}
 ##              ->{LineNo}              Line number of section starter
-##              ->{$Var}                Variables found in section
-##                  ->{Value}           Value of variable
-##                  ->{LineNo}          Line # where value was found
-##                  ->{NewValue}        New value to set during update call
-##      ->{AsHash}                      Pure hash version of section data
-##          ->{$Section}                Named section
-##              ->{$Var}=>$Value        Value of variable in section
+##              ->{Vars}                Variables found in section
+##                  ->{$Var}            Variables found in section
+##                      ->{Value}       Value of variable
+##                      ->{LineNo}      Line # where value was found
+##                      ->{NewValue}    New value to set during update call
+##
 ##
 ##  FUNCTIONS
 ##
@@ -38,13 +39,29 @@
 ##              ->{Action}              One of the actions listed below
 ##              ->{Name}                Optional name, used in command
 ##
-##      ->Parse($Filename)              Parse specified file
-##      ->Parse(\@Lines)                Parse specified lines
+##      ->Init()                        Clear out data, for future parsing
+##
+##      ->ParseFile($Filename)          Parse specified file
+##      ->ParseLines(@Lines)            Parse list of lines
+##      ->ParseCommand($Cmd)            Parse output of external command
+##      ->Parse()                       Parse $self->{Lines}
+##
+##      ->AsHash() => {}                Return hash version of parsed data
+##          ->{$Var} => $Value          Variable in GLOBAL section
+##          ->{$Section}                Named section
+##              ->{$Var}=>$Value        Value of variable in section
 ##
 ##      ->AddLines($Line,@Lines...)     Add more lines to file
-##      ->Comment($Section,$Comment)    Comment out a section
 ##
-##      ->Update($Filename)             Update specified file with new data
+##      ->CommentLine($LineNo,$Type)        Comment out a line, using supplied function
+##      ->CommentVar($Section,$Var,$Type)   Comment out a specific variable
+##      ->CommentSection($Section,$Type)    Comment out entire section, including section header
+##
+##      ->Update()                      Update specified file with new data
+##
+##      ->SaveFile($Filename)           Save modified file
+##
+##  NOTE: The special section "Global" contains variables not otherwise in a section.
 ##
 ########################################################################################################################
 ########################################################################################################################
@@ -94,6 +111,10 @@ use constant AddGlobal      => 3;
 use constant SkipLine       => 4;
 
 use constant CommentHash    => 1;       # Commented by prepending hash
+use constant CommentSemi    => 2;       # Commented by prepending semicolon
+use constant CommentCPP     => 3;       # Commented by prepending //
+use constant CommentC       => 4;       # Commented by /* .. */, as in original C
+use constant CommentHTML    => 5;       # Commented by <!-- .. -->, as in HTML
 
 our $GLOBAL_SECTION = "Global";
 
@@ -103,6 +124,7 @@ our $GLOBAL_SECTION = "Global";
 # Site::ConfigFile - Parse a config file
 #
 # Inputs:   List of action to take while parsing
+#           [Optional] Filename to parse
 #
 # Outputs:  Parsed config info
 #
@@ -112,9 +134,8 @@ sub new {
     my $Args  = { @_ };
     my $self  = bless $Args,$class;
 
-    $self->{  AsHash} = {};
-    $self->{   Lines} = [];
-    $self->{Sections}{$GLOBAL_SECTION} = {};
+    $self->Init();
+    $self->{Lines} = [];
 
     return $self;
     }
@@ -123,32 +144,111 @@ sub new {
 ########################################################################################################################
 ########################################################################################################################
 #
-# Parse - Parse a config file
+# Init - Clear out data, in preparation for parsing
+#
+# Inputs:   None.
+#
+# Outputs:  None.
+#
+sub Init {
+    my $self     = shift;
+    my $Filename = shift // $self->{Filename};
+
+    $self->{  Parsed} = 0;
+    $self->{ Changed} = 0;
+    $self->{Sections} = {};
+    $self->{Sections}{$GLOBAL_SECTION} = {};
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# ParseFile - Parse a config file
 #
 # Inputs:   Filename to parse (default: uses internal filename)
-#           ALTERNATE: Array of lines to parse
 #
 # Outputs:  TRUE  if file parsed correctly
 #           FALSE if an error occurred (check $! for more info)
 #
-sub Parse {
+sub ParseFile {
     my $self     = shift;
     my $Filename = shift // $self->{Filename};
 
-    if( ref($Filename) eq "ARRAY" ) {
-        $self->{Filename} = undef;
-        $self->{Lines}    = [ @{$Filename} ];
-        }
-    else {
-        $self->{Filename} = $Filename;
-        @{$self->{Lines}} = eval{read_file($Filename)}      # Catches/avoids Croak() in lib function
-            or return 0;
-        }
+    $self->Init();
 
-    $self->{  AsHash} = {};
-    $self->{Sections}{$GLOBAL_SECTION} = {};
+    $self->{Filename} = $Filename;
+    $self->{   Lines} = [];
+    @{$self->{Lines}} = eval{read_file($Filename)}      # Catches/avoids Croak() in lib function
+        or return 0;
 
-    my $CurrentHash    = $self->{  AsHash};
+    return $self->Parse();
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# ParseLines - Parse user-supplied lines
+#
+# Inputs:   List of lines (or arrays of lines) to parse
+#
+# Outputs:  TRUE  if lines parsed correctly
+#           FALSE if an error occurred (check $! for more info)
+#
+sub ParseLines {
+    my $self = shift;
+
+    $self->Init();
+    $self->{Lines} = [];
+    $self->AddLines(@_);
+    $self->{Changed} = 0;
+
+    return $self->Parse();
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# ParseCommand - Parse command output from external command
+#
+# Inputs:   Command to execute and parse
+#
+# Outputs:  TRUE  if lines parsed correctly
+#           FALSE if an error occurred (check $! for more info)
+#
+sub ParseCommand {
+    my $self    = shift;
+    my $Command = shift;
+
+    $self->Init();
+    $self->{Lines} = [];
+
+    @{$self->{Lines}} = eval{`$Command`}      # Catches/avoids Croak() in lib function
+        or return 0;
+
+    return $self->Parse();
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# Parse - Parse the existing set of lines
+#
+# Inputs:   None.
+#
+# Outputs:  TRUE  if file parsed correctly
+#           FALSE if an error occurred (check $! for more info)
+#
+# NOTE: Intended for internal use, but not a problem if an external call happens.
+#
+sub Parse {
+    my $self = shift;
+
+    $self->Init();
+
     my $GlobalSection  = $self->{Sections}{$GLOBAL_SECTION};
     my $CurrentSection = $GlobalSection;
 
@@ -182,10 +282,8 @@ sub Parse {
             # StartSection - Start a new section with specified name
             #
             if( $Match->{Action} == StartSection ) {
-                $self->{Sections}{$Name} = { LineNo => $LineNo };
-                $self->{  AsHash}{$Name} = {};
+                $self->{Sections}{$Name} = { LineNo => $LineNo, Vars => {} };
                 $CurrentSection = $self->{Sections}{$Name};
-                $CurrentHash    = $self->{  AsHash}{$Name};
                 next;
                 }
 
@@ -194,7 +292,6 @@ sub Parse {
             #
             elsif( $Match->{Action} == EndSection ) {
                 my $CurrentSection = $GlobalSection;
-                my $CurrentHash    = $self->{AsHash};
                 next;
                 }
 
@@ -203,14 +300,12 @@ sub Parse {
             #               in a different section)
             #
             elsif( $Match->{Action} == AddGlobal ) {
-                $GlobalSection->{$Name} = { Value => $Var1, LineNo => $LineNo };
-                $self->{ AsHash}{$Name} = $Var1;
+                $GlobalSection->{Vars}{$Name} = { Value => $Var1, LineNo => $LineNo };
                 next;
                 }
 
             elsif( $Match->{Action} == AddVar ) {
-                $CurrentSection->{$Name} = { Value => $Var1, LineNo => $LineNo };
-                $CurrentHash   ->{$Name} = $Var1;
+                $CurrentSection->{Vars}{$Name} = { Value => $Var1, LineNo => $LineNo };
                 next;
                 }
 
@@ -220,7 +315,40 @@ sub Parse {
             }
         }
 
-    return $self->{AsHash};
+    $self->{Parsed} = 1;
+
+    return $self->AsHash();
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# AsHash - Return pure perl hash of data
+#
+# Inputs:   None.
+#
+# Outputs:  Pure perl hash of parsed data
+#
+sub AsHash {
+    my $self = shift;
+
+    my $Hash = {};
+    my $CurrentSection;
+
+    foreach my $Section (keys %{$self->{Sections}}) {
+        if( $Section eq $GLOBAL_SECTION ) { $CurrentSection = $Hash }
+        else {
+            $Hash->{$Section} = {};
+            $CurrentSection = $Hash->{$Section};
+            }
+
+        foreach my $Var (keys %{$self->{Sections}{$Section}{Vars}}) {
+            $CurrentSection->{$Var} = $self->{Sections}{$Section}{Vars}{$Var}{Value};
+            }        
+        }
+
+    return $Hash;
     }
 
 
@@ -236,6 +364,9 @@ sub Parse {
 sub AddLines {
     my $self = shift;
 
+    #
+    # Go through all arguments, adding lines and arrays as found
+    #
     while(1) {
         my $Arg = shift;
 
@@ -243,11 +374,54 @@ sub AddLines {
             unless defined $Arg;
 
         if( ref($Arg) eq "ARRAY" ) {
-            push @{$self->{Lines}},@$Arg;
+            push @{$self->{Lines}},@{$Arg};
+            $self->{Changed} = 1;
             next;
             }
 
-        push @{$self->{Lines}}, $Arg;
+        die "$self: Not a line or array of lines."
+            if ref($Arg);
+
+        push @{$self->{Lines}},$Arg;
+        $self->{Changed} = 1;
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# FromHash - Set new values, based on passed hashref
+#
+# Inputs:   Hashref to check
+#
+# Outputs:  None.
+#
+sub FromHash {
+    my $self = shift;
+    my $Hash = shift;
+
+    my $CurrentSection;
+
+    foreach my $Section (keys %{$self->{Sections}}) {
+        if( $Section eq $GLOBAL_SECTION ) { $CurrentSection = $Hash }
+        else {
+            next
+                unless defined $Hash->{$Section};
+
+            $CurrentSection = $Hash->{$Section};
+            }
+
+        foreach my $Var (keys %{$self->{Sections}{$Section}{Vars}}) {
+            next
+                unless defined $CurrentSection->{$Var};
+
+            next
+                if $CurrentSection->{$Var} eq $self->{Sections}{$Section}{Vars}{$Var}{Value};
+
+            $self->{Sections}{$Section}{Vars}{$Var}{NewValue} = $CurrentSection->{$Var};
+            $self->{Changed} = 1;
+            }        
         }
     }
 
@@ -263,48 +437,68 @@ sub AddLines {
 #           FALSE if an error occurred (check $! for more info)
 #
 sub Update {
+    my $self = shift;
+
+    #
+    #  ->{Sections}                    Hash of sections by name
+    #      ->{$SecName}
+    #          ->{LineNo}              Line # of section identifier
+    #          ->{Vars}                Variables found in section
+    #              ->{$Var}                Name of variable
+    #                  ->{Value}           Value of variable
+    #                  ->{LineNo}          Line # where value was found
+    #                  ->{NewValue}        New value to set during update call
+    #
+    foreach my $SectionName (keys %{$self->{Sections}}) {
+
+        foreach my $VarName (keys %{$self->{Sections}{$SectionName}{Vars}}) {
+            my $Var = $self->{Sections}{$SectionName}{Vars}{$VarName};
+
+            next
+                unless ref $Var eq "HASH";
+
+            next
+                unless defined $Var->{LineNo};
+
+            next
+                unless defined $Var->{Value};
+
+            next
+                unless defined $Var->{NewValue};
+
+            next
+                unless $Var->{NewValue} ne $Var->{Value};
+
+            $self->{Lines}[$Var->{LineNo}] =~ s/\Q$Var->{Value}\E/\Q$Var->{NewValue}\E/g;
+
+            $self->{Changed} = 1;
+            }
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# SaveFile - Parse a config file
+#
+# Inputs:   Filename to save to (default: uses internal filename)
+#
+# Outputs:  TRUE  if file saved correctly
+#           FALSE if an error occurred (check $! for more info)
+#
+sub SaveFile {
     my $self     = shift;
     my $Filename = shift // $self->{Filename};
 
     $self->{Filename} = $Filename;
 
     #
-    #  ->{Sections}                    Hash of sections by name
-    #      ->{$SecName}
-    #          ->{$Var}                Variables found in section
-    #              ->{Value}           Value of variable
-    #              ->{LineNo}          Line # where value was found
-    #              ->{NewValue}        New value to set during update call
-    #
-    foreach my $SectionName (keys %{$self->{Sections}}) {
-        foreach my $VarName (keys %{$self->{Sections}{$SectionName}}) {
-            my $Var = $self->{Sections}{$SectionName}{$VarName};
-
-            next
-                unless defined $Var;
-
-            next
-                unless ref $Var eq "HASH";
-
-            next
-                unless defined $Var->{NewValue};
-
-            next
-                unless defined $Var->{Value};
-
-            next
-                unless $Var->{NewValue} ne $Var->{Value};
-
-            $self->{Lines}[$Var->{LineNo}] =~ s/\Q$Var->{Value}\E/\Q$Var->{NewValue}\E/g;
-            }
-        }
-
-    #
     # The write_file() function doesn't have an "unchomp" option?
     #
-    @{$self->{Lines}} = map { $_ .= "\n" } @{$self->{Lines}};
+    my @OutLines = map { $_ .= "\n" } @{$self->{Lines}};
 
-    write_file($Filename,$self->{Lines});
+    write_file($Filename,@OutLines);
 
 #use Data::Dumper;
 #print Data::Dumper->Dump([$self->{Lines}],["$self->{Filename}"]);
@@ -315,31 +509,108 @@ sub Update {
 ########################################################################################################################
 ########################################################################################################################
 #
-# Comment - Comment out a section or variable
+# CommentLine - Comment out a line, using supplied function
 #
-# Inputs:   Ref to hash within the "Sections" area of the class
-#           Comment action to take (ex: Site::ParseData::CommentHash)
+# Inputs:   Lineno to comment
+#           Comment action to take (DEFAULT: Site::ParseData::CommentHash)
 #
 # Outputs:  None.
 #
-sub Comment {
-    my $self = shift;
-    my $Hash = shift;
+sub CommentLine {
+    my $self   = shift;
+    my $LineNo = shift;
+
     my $CommentStyle = shift // CommentHash;
 
-    #
-    # As of this writing, only "CommentHash" is implemented.
-    #
-    if( $CommentStyle == CommentHash ) {
-        $self->{Lines}[$Hash->{LineNo}] = "# " . $self->{Lines}[$Hash->{LineNo}]
-            if ref $Hash eq "HASH" and defined $Hash->{LineNo};
+    return
+        unless defined $LineNo;
 
-        foreach my $Var (values %{$Hash}) {
-            $self->{Lines}[$Var->{LineNo}] = "# " . $self->{Lines}[$Var->{LineNo}]
-                if ref $Var eq "HASH" and defined $Var->{LineNo}
-                   and substr($self->{Lines}[$Var->{LineNo}],0,1) ne "#";
-            }
+    if( $CommentStyle == CommentHash ) {
+        $self->{Lines}[$LineNo] = "# " . $self->{Lines}[$LineNo]
+            unless $self->{Lines}[$LineNo] =~ /^# /;
+        return;
         }
+
+    if( $CommentStyle == CommentCPP ) {
+        $self->{Lines}[$LineNo] = "// " . $self->{Lines}[$LineNo]
+            unless $self->{Lines}[$LineNo] =~ #^// #;
+        return;
+        }
+
+    if( $CommentStyle == CommentC ) {
+        $self->{Lines}[$LineNo] = "/* " . $self->{Lines}[$LineNo] . " */"
+            unless $self->{Lines}[$LineNo] =~ #^/* .* */#;
+        return;
+        }
+
+    if( $CommentStyle == CommentHTML ) {
+        $self->{Lines}[$LineNo] = "<!-- " . $self->{Lines}[$LineNo] . " -->"
+            unless $self->{Lines}[$LineNo] =~ #^<\!-- .* -->#;
+        return;
+        }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# CommentVar - Comment out a specific var, within section
+#
+# Inputs:   Section containing var
+#           Variable to comment out
+#           Comment action to take (DEFAULT: Site::ParseData::CommentHash)
+#           
+# Outputs:  None.
+#
+sub CommentVar {
+    my $self    = shift;
+    my $Section = shift;
+    my $Var     = shift;
+
+    my $CommentStyle = shift // CommentHash;
+
+    return
+        unless defined $Section;
+
+    return
+        unless defined $self->{Sections}{$Section};
+
+    return
+        unless defined $Var;
+
+    return
+        unless defined $self->{Sections}{$Section}{Vars}{$Var};
+
+    $self->CommentLine($self->{Sections}{$Section}{Vars}{$Var}{LineNo});
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+#
+# CommentSection - Comment out an entire section, including section header
+#
+# Inputs:   Section to be commented
+#           Comment action to take (DEFAULT: Site::ParseData::CommentHash)
+#           
+# Outputs:  None.
+#
+sub CommentSection {
+    my $self    = shift;
+    my $Section = shift;
+
+    my $CommentStyle = shift // CommentHash;
+
+    return
+        unless defined $Section;
+
+    return
+        unless defined $self->{Sections}{$Section};
+
+    $self->CommentLine($self->{Sections}{$Section}{LineNo});
+
+    $self->CommentLine($_->{LineNo})
+        foreach values %{$self->{Sections}{$Section}{Vars}};
     }
 
 

@@ -41,7 +41,7 @@
 ##      SetDHCPInfo($Info)  Write new DHCP info with new values
 ##
 ##      GetNetEnable()->[]  Return array if enable/disable specifics from the netenable file
-##          ->{Valid}           TRUE if DHCP info file found
+##          ->{Valid}           TRUE if netenable info file found
 ##          ->{$IF}             Points to interfaces entry for interface
 ##              ->"enable"      Value is "enable" or "disable"
 ##
@@ -105,6 +105,18 @@ our  $WPAConfigFile = "/etc/wpa_supplicant/wpa_supplicant.conf";
 our   $NEConfigFile = "../etc/netenable";
 
 #
+# 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+#     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+# 2: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
+#     link/ether dc:a6:32:33:cd:91 brd ff:ff:ff:ff:ff:ff
+# 3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DORMANT group default qlen 1000
+#     link/ether dc:a6:32:33:cd:92 brd ff:ff:ff:ff:ff:ff
+#
+our $DevMatches = [
+    { RegEx => qr/^\d+:\s*(.+):\s*</, Action => Site::ParseData::AddVar },
+    ];
+
+#
 # ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 # update_config=1
 # country=US
@@ -162,33 +174,18 @@ our $NEMatches = [
 # Outputs:  [Ref to] Array of network devices, by name
 #
 sub GetNetDevs {
-    my $NetDevs = [];
+
+    my $DevParse = Site::ParseData->new(Matches => $DevMatches);
 
     #
-    # 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
-    #     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-    # 2: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc mq state DOWN mode DEFAULT group default qlen 1000
-    #     link/ether dc:a6:32:33:cd:91 brd ff:ff:ff:ff:ff:ff
-    # 3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DORMANT group default qlen 1000
-    #     link/ether dc:a6:32:33:cd:92 brd ff:ff:ff:ff:ff:ff
+    # I don't *think* there's a way that this can be invalid, so didn't bother checking results.
     #
-    my @IPInfo = `ip link show`;
-    chomp @IPInfo;
+    $DevParse->ParseCommand("ip link show");
 
-    foreach my $Line (@IPInfo) {
-        next
-            unless $Line !~ /^\s/;
+    my $NetDevs = [ keys %{$DevParse->AsHash()} ];
 
-        my ($Index,$Device,$Chuvmey) = split / /,$Line;
-
-        substr($Device,-1) = ""
-            if substr($Device,-1) eq ":";
-
-        push @{$NetDevs},$Device;
-        }
-
-#use Data::Dumper;
-#print Data::Dumper->Dump([$NetDevs],[qw(NetDevs)]);
+# use Data::Dumper;
+# print Data::Dumper->Dump([$NetDevs],[qw(NetDevs)]);
 
     return $NetDevs;
     }
@@ -213,10 +210,11 @@ sub GetWPAInfo {
         unless -r $WPAConfigFile;
 
     my $ConfigFile = Site::ParseData->new(Filename => $WPAConfigFile, Matches  => $WPAMatches);
+    my $WPAInfo    = $ConfigFile->ParseFile();
+    $WPAInfo->{Valid} = $ConfigFile->{Parsed};
 
-    my $WPAInfo = $ConfigFile->Parse();
-
-    $WPAInfo->{Valid} = 1;
+# use Data::Dumper;
+# print Data::Dumper->Dump([$WPAInfo],[qw(WPAInfo)]);
 
     return $WPAInfo;
     }
@@ -231,9 +229,9 @@ sub GetWPAInfo {
 #
 # Outputs:  None.
 #
-# NOTE: This function sets a SINGLE set of wireless credentials, and uses the same method
-#         as raspi-config. If your application needs multiple sets, then this method is
-#         not appropriate.
+# NOTE: This function sets a SINGLE set of wireless credentials, using the same method
+#         as raspi-config. If your application needs multiple sets, then this method
+#         won't work.
 #
 sub SetWPAInfo {
     my $WPAInfo = shift;
@@ -242,9 +240,8 @@ sub SetWPAInfo {
     # If the original file did not exist, create an original one. If needed.
     #
     return
-        if not -r $WPAConfigFile and
-           (not defined($WPAInfo->{SSID}) or length($WPAInfo->{SSID}) == 0);
-        
+        unless -w $WPAConfigFile;
+
     if( not -r $WPAConfigFile ) {
 
 my $wpa_text = <<"END_WPA";
@@ -268,18 +265,21 @@ END_WPA
     # Original file exists. Reparse and add new vars as needed.
     #
     my $ConfigFile = Site::ParseData->new(Filename => $WPAConfigFile, Matches => $WPAMatches);
-    $ConfigFile->Parse();
+    $ConfigFile->ParseFile();
 
-    foreach my $VarName (keys %{$WPAInfo}) {
-        if( defined $ConfigFile->{Sections}{Global}{$VarName} ) {
-            $ConfigFile->{Sections}{Global}{$VarName}{NewValue} = $WPAInfo->{$VarName};
-            }
-        }
+    return
+        unless $ConfigFile->{Parsed};
 
-#use Data::Dumper;
-#print Data::Dumper->Dump([$ConfigFile],["$ConfigFile->{Filename}"]);
-
+    #
+    # Update the existing workgroup
+    #
+    $ConfigFile->FromHash($WPAInfo);
     $ConfigFile->Update();
+    $ConfigFile->SaveFile();
+
+# use Data::Dumper;
+# print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
+
     }
 
 
@@ -298,10 +298,11 @@ sub GetDHCPInfo {
         unless -r $DHCPConfigFile;
 
     my $ConfigFile = Site::ParseData->new(Filename => $DHCPConfigFile, Matches  => $DHCPMatches);
+    my $DHCPInfo   = $ConfigFile->ParseFile();
+    $DHCPInfo->{Valid} = $ConfigFile->{Parsed};
 
-    my $DHCPInfo = $ConfigFile->Parse();
-
-    $DHCPInfo->{Valid} = 1;
+# use Data::Dumper;
+# print Data::Dumper->Dump([$DHCPInfo],[qw(DHCPInfo)]);
 
     return $DHCPInfo;
     }
@@ -323,37 +324,31 @@ sub SetDHCPInfo {
     # If the original file did not exist, we simply punt. It probably means DHCP is not installed.
     #
     return
-        unless -r $DHCPConfigFile;
+        unless -w $DHCPConfigFile;
     
+    #
+    # Update the existing data
+    #
     my $ConfigFile = Site::ParseData->new(Filename => $DHCPConfigFile, Matches => $DHCPMatches);
-    $ConfigFile->Parse();
+    my $OrigInfo   = $ConfigFile->ParseFile();
+
+    return
+        unless $ConfigFile->{Parsed};
+
+    $ConfigFile->FromHash($DHCPInfo);
 
     #
-    # Update the existing vars, and add new vars as needed
+    # Add new entries as needed, comment out the DHCP and disabled ones
     #
     foreach my $IFName (keys %{$DHCPInfo}) {
-        my $IF = $ConfigFile->{Sections}{$IFName};
 
-        #
-        # No original DHCP info.
-        #
-        if( not defined $IF ) {
+        if( !defined $OrigInfo->{$IFName}          &&
+             defined $DHCPInfo->{$IFName}{IPAddr}  &&
+             length  $DHCPInfo->{$IFName}{IPAddr}  &&
+                     $DHCPInfo->{$IFName}{Enabled} &&
+             not     $DHCPInfo->{$IFName}{DHCP}    ) {
             #
-            # Not enabled anyway - Skip
-            #
-            if( not $DHCPInfo->{$IFName}{Enabled} ) {
-                next;
-                }
-
-            #
-            # Not static - Skip
-            #
-            if( $DHCPInfo->{$IFName}{DHCP} ) {
-                next;
-                }
-
-            #
-            # Add a new section to config file.
+            # Add a new section to the config file.
             #
             my $IFConfig = [
                 "",
@@ -371,7 +366,7 @@ sub SetDHCPInfo {
         # An original DHCP block exists and New description is disabled. Comment out original
         #
         if( not $DHCPInfo->{$IFName}{Enabled} ) {
-            $ConfigFile->Comment($IF);
+            $ConfigFile->CommentSection($IFName);
             next;
             }
 
@@ -379,20 +374,13 @@ sub SetDHCPInfo {
         # An original DHCP block exists and New description is not static. Comment out original
         #
         if( $DHCPInfo->{$IFName}{DHCP} ) {
-            $ConfigFile->Comment($IF);
+            $ConfigFile->CommentSection($IFName);
             next;
-            }
-
-        #
-        # An original DHCP block exists and New description is static. Change all the vars
-        #
-        foreach my $VarName (keys %{$DHCPInfo->{$IFName}}) {
-            $IF->{$VarName}{NewValue} = $DHCPInfo->{$IFName}{$VarName}
-                if defined $IF->{$VarName}{Value};
             }
         }
 
-    $ConfigFile->Update();
+    $ConfigFile->Update();          # Make the changes
+    $ConfigFile->SaveFile();        # Save the new file
 
 # use Data::Dumper;
 # print Data::Dumper->Dump([$ConfigFile],[$ConfigFile->{Filename}]);
@@ -415,10 +403,11 @@ sub GetNetEnable {
         unless -r $NEConfigFile;
 
     my $ConfigFile = Site::ParseData->new(Filename => $NEConfigFile, Matches  => $NEMatches);
+    my $NEInfo     = $ConfigFile->ParseFile();
+    $NEInfo->{Valid} = $ConfigFile->{Parsed};
 
-    my $NEInfo = $ConfigFile->Parse();
-
-    $NEInfo->{Valid} = 1;
+# use Data::Dumper;
+# print Data::Dumper->Dump([$NEInfo],["NEInfo"]);
 
     return $NEInfo;
     }
@@ -435,7 +424,6 @@ sub GetNetEnable {
 #
 sub SetNetEnable {
     my $EnbInfo  = shift;
-    my $EnbLines = [];
 
     #
     # If the original file did not exist, create an empty one.
@@ -445,17 +433,21 @@ sub SetNetEnable {
         }
 
     my $ConfigFile = Site::ParseData->new(Filename => $NEConfigFile, Matches => $NEMatches);
-    my $NEInfo = $ConfigFile->Parse();
+    my $NEInfo     = $ConfigFile->ParseFile();
 
     #
     # Update the existing vars, and add new vars as needed
     #
     foreach my $IFName (keys %{$EnbInfo}) {
 
+        next
+            unless ref($EnbInfo->{$IFName}) eq "HASH" and
+                   defined $EnbInfo->{$IFName}{Enabled};
+
         my $Enable = $EnbInfo->{$IFName}{Enabled} ? "enable" : "disable";
 
-        if( defined $ConfigFile->{Sections}{Global}{$IFName} ) {
-            $ConfigFile->{Sections}{Global}{$IFName}{NewValue} = $Enable;
+        if( defined $NEInfo->{$IFName} ) {
+            $ConfigFile->{Sections}{Global}{Vars}{$IFName}{NewValue} = $Enable;
             }
         else {
             $ConfigFile->AddLines("$IFName: " . $Enable);
@@ -463,9 +455,11 @@ sub SetNetEnable {
         }
 
     $ConfigFile->Update();
+    $ConfigFile->SaveFile();
 
 #use Data::Dumper;
 #print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
+
     }
 
 

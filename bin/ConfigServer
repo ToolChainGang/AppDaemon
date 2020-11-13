@@ -32,13 +32,14 @@
 ##              { KeyMGMT} => 'WPA-PSK',
 ##              {Password} => '(something)',
 ##              { Country} => 'US'
-##          {$IF}    ->                 # ie $Config->{"wlan0"}->...
-##              {Enabled}-> => 0,
-##              {   DHCP}-> => 1,
-##              { IPAddr}-> => '192.168.1.31/24',
-##              { Router}-> => '192.168.1.1',
-##              {   DNS1}-> => '1.0.0.1',
-##              {   DNS2}-> => '1.1.1.1',
+##          {DHCPInfo}->
+##              {$IF}->                 # ie $Config->{DHCPInfo}{"wlan0"}->...
+##                  {Enabled}-> => 0,
+##                  {   DHCP}-> => 1,
+##                  { IPAddr}-> => '192.168.1.31/24',
+##                  { Router}-> => '192.168.1.1',
+##                  {   DNS1}-> => '1.0.0.1',
+##                  {   DNS2}-> => '1.1.1.1',
 ##
 ########################################################################################################################
 ########################################################################################################################
@@ -104,6 +105,8 @@ our $DHCPInfo = GetDHCPInfo();
 our $NEInfo   = GetNetEnable();
 our $FSInfo   = GetFSInfo();
 
+our $BlankPW  = "--(something)--";
+
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -127,7 +130,7 @@ $Verbose = 1
 #
 $Config = SetupConfig();
 
-# print Data::Dumper->Dump([$Config],[qw(Config)]);
+# print Data::Dumper->Dump([$Config],["Config"]);
 # exit(0);
 
 ########################################################################################################################
@@ -334,7 +337,7 @@ sub SetupConfig {
     # Don't pass the existing WiFi password around
     #
     $Config->{WPAInfo} = $WPAInfo;
-    $Config->{WPAInfo}{Password} = "(something)";
+    $Config->{WPAInfo}{Password} = $BlankPW;
 
     #
     # Parse out some of the net info for easier access by the server
@@ -352,27 +355,27 @@ sub SetupConfig {
         # Set up defaults so that the server doesn't have to deal with missing info
         #
         $IF->{Enabled} = 1;
+        $IF->{   DHCP} = 1;
         $IF->{ IPAddr} = "";
         $IF->{ Router} = "";
         $IF->{   DNS1} = "";
         $IF->{   DNS2} = "";
 
-        $IF->{Enabled} = lc($NEInfo->{$IFName}) eq "enable" ? 1 : 0
+        $IF->{Enabled} = lc($NEInfo->{$IFName}) eq "disable" ? 0 : 1
             if defined $NEInfo->{$IFName};
 
         $IF->{ IPAddr} = $DHCPInfo->{$IFName}{IPAddr}
-            if defined $DHCPInfo->{$IFName}{IPAddr};
+            if defined   $DHCPInfo->{$IFName}{IPAddr};
         $IF->{ Router} = $DHCPInfo->{$IFName}{Router}
-            if defined $DHCPInfo->{$IFName}{Router};
+            if defined   $DHCPInfo->{$IFName}{Router};
         $IF->{   DNS1} = $DHCPInfo->{$IFName}{DNS1}
-            if defined $DHCPInfo->{$IFName}{DNS1};
+            if defined   $DHCPInfo->{$IFName}{DNS1};
         $IF->{   DNS2} = $DHCPInfo->{$IFName}{DNS2}
-            if defined $DHCPInfo->{$IFName}{DNS2};
+            if defined   $DHCPInfo->{$IFName}{DNS2};
 
-        $IF->{   DHCP} = 1;
         $IF->{   DHCP} = 0
-            if defined $IF->{ IPAddr} and
-               length  $IF->{ IPAddr};
+            if defined $IF->{IPAddr} and
+               length  $IF->{IPAddr};
         }
 
     return $Config;
@@ -398,17 +401,23 @@ sub SetConfig {
     #
     # Wifi credentials
     #
-    SetWPAInfo($NewState->{WPAInfo});
+    # Undo the password masking done above, so that the functions can properly
+    #   tell if the value has changed.
+    #
+    $NewState->{WPAInfo}{Password} = $WPAInfo->{Password} // ""
+        if $NewState->{WPAInfo}{Password} eq $BlankPW;
+
+    SetWPAInfo($NewState->{WPAInfo});       # Checked
 
     #
     # File sharing
     #
-    SetFSInfo($NewState->{FSInfo});
+    SetFSInfo($NewState->{FSInfo});         # Checked
 
     #
     # Net enable
     #
-    SetNetEnable($NewState->{DHCPInfo});
+    SetNetEnable($NewState->{DHCPInfo});    # Checked
 
     #
     # DHCP stuff
@@ -418,7 +427,7 @@ sub SetConfig {
     #
     # System name
     #
-    ChangeHostname($NewState->{SysName});
+    ChangeHostname($NewState->{SysName});   # Checked
 
 #     print Data::Dumper->Dump([$NewState],["NewConfig"])
 #         if $Verbose;

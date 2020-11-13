@@ -27,6 +27,8 @@
 ##
 ##      SetFSInfo($Info)    Write new FS info with new values
 ##
+##  NOTE: "Users" section is not currently implemented.
+##
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -101,10 +103,11 @@ sub GetFSInfo {
         unless -r $FSConfigFile;
 
     my $ConfigFile = Site::ParseData->new(Filename => $FSConfigFile, Matches  => $FSMatches);
+    my $FSInfo     = $ConfigFile->ParseFile();
+    $FSInfo->{Valid} = $ConfigFile->{Parsed};
 
-    my $FSInfo = $ConfigFile->Parse();
-
-    $FSInfo->{Valid} = 1;
+# use Data::Dumper;
+# print Data::Dumper->Dump([$FSInfo],["FSInfo"]);
 
     return $FSInfo;
     }
@@ -126,17 +129,20 @@ sub SetFSInfo {
     # If the original file did not exist, we simply punt. It probably means samba is not installed.
     #
     return
-        unless -r $FSConfigFile;
+        unless -w $FSConfigFile;
     
     my $ConfigFile = Site::ParseData->new(Filename => $FSConfigFile, Matches => $FSMatches);
-    $ConfigFile->Parse();
+    $ConfigFile->ParseFile();
+
+    return
+        unless $ConfigFile->{Parsed};
 
     #
     # Update the existing workgroup
     #
-    $ConfigFile->{Sections}{Global}{Workgroup}{NewValue} = $FSInfo->{Workgroup};
-
+    $ConfigFile->FromHash($FSInfo);
     $ConfigFile->Update();
+    $ConfigFile->SaveFile();
 
 # use Data::Dumper;
 # print Data::Dumper->Dump([$ConfigFile->{Lines}],[$ConfigFile->{Filename}]);
