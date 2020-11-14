@@ -43,6 +43,23 @@
 
 ########################################################################################################################
 #
+# The following commands will run the configuration process outright, without having to press the GPIO
+#   or take down the interfaces. This allows you to debug the config system over ssh.
+#
+# From ssh:
+#
+killall /usr/bin/perl
+cd /root/AppDaemon/public_html
+python2 -m HTTPServer 80               &
+/root/AppDaemon/bin/ConfigServer -r -v &
+
+#
+# The "-r" option to the ConfigServer means it will not reboot after save
+#
+
+
+########################################################################################################################
+#
 # The following command will periodically scan and print out AP ESSID's
 #
 # Run this from a command prompt on your laptop to continuously scan for APs while

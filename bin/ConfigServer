@@ -18,9 +18,11 @@
 ##
 ##  USAGE
 ##
-##      ConfigServer [-v]
+##      ConfigServer [-r] [-v]
 ##
-##      where:      -v      Verbose: print out things as they happen
+##      where:      -r      Don't actually reboot after save (for debugging)
+##
+##                  -v      Verbose: print out things as they happen
 ##
 ##      $Config->
 ##          {SysName}->'raspberrypi',
@@ -118,12 +120,21 @@ our $BlankPW  = "--(something)--";
 #
 # Process command line args.
 #
-#     -v (verbose) means "print out extra stuff"
+#     -v (verbose  ) means "print out extra stuff"
+#     -r (no reboot) means "don't reboot after save"
 #
-my $Verbose = 0;
+my $Verbose  = 0;
+my $NoReboot = 0;
 
-$Verbose = 1
-    if defined $ARGV[0] and $ARGV[0] eq "-v";
+if( defined $ARGV[0] and $ARGV[0] eq "-r" ) {
+    $NoReboot = 1;
+    shift @ARGV;
+    }
+
+if( defined $ARGV[0] and $ARGV[0] eq "-v" ) {
+    $Verbose = 1;
+    shift @ARGV;
+    }
 
 #
 # This will serve as the "original" config for comparison when/if a new config is written.
@@ -140,6 +151,9 @@ $Config = SetupConfig();
 #
 Message("ConfigServer is up and running.")
     if $Verbose;
+
+Message("Will not reboot after save.")
+    if $NoReboot;
 
 Message("Waiting for websocket connection")
     if $Verbose;
@@ -221,7 +235,8 @@ sub WebRequest {
         Message("ConfigServer: SetConfig()")
             if $Verbose;
         SetConfig($Request->{Arg1},$Config,$Verbose);
-        Reboot();
+        Reboot()
+            unless $NoReboot;
         }
 
     #
@@ -299,6 +314,7 @@ sub SetupIWList {
 sub SetupConfig {
     my $Config;
 
+    ####################################################################################################################
     #
     # SysName
     #
@@ -308,6 +324,7 @@ sub SetupConfig {
 
     $Config->{SysName} = $SysName;
 
+    ####################################################################################################################
     #
     # About
     #
@@ -319,6 +336,20 @@ sub SetupConfig {
     push @{$Config->{About}}, $Info[5];        # "            Kernel: Linux 5.4.51-v7l+"
     push @{$Config->{About}}, $Info[6];        # "      Architecture: arm"
 
+    #
+    # Filesystem      Size  Used Avail Use% Mounted on
+    # /dev/root        15G  8.4G  5.4G  61% /
+    #
+    my @Disk = `df -h`;
+    chomp @Disk;
+    my ($Dev,$Size,$Used,$Avail,$Pct,$Mount) = split /\s+/,$Disk[1];
+    my $DiskLine = "              Disk: $Used used of $Size ($Pct full)";
+
+    push @{$Config->{About}},$DiskLine;
+
+    #
+    # Product application info
+    #
     foreach my $Line (read_file("../etc/about")) {
         chomp $Line;
 
@@ -328,17 +359,20 @@ sub SetupConfig {
         push @{$Config->{About}}, $Line        # Product application info
         }        
 
+    ####################################################################################################################
     #
     # File sharing (ie: samba) info
     #
     $Config->{FSInfo} = $FSInfo;
 
+    ####################################################################################################################
     #
     # Don't pass the existing WiFi password around
     #
     $Config->{WPAInfo} = $WPAInfo;
     $Config->{WPAInfo}{Password} = $BlankPW;
 
+    ####################################################################################################################
     #
     # Parse out some of the net info for easier access by the server
     #
@@ -404,6 +438,8 @@ sub SetConfig {
     # Undo the password masking done above, so that the functions can properly
     #   tell if the value has changed.
     #
+    $WPAInfo = GetWPAInfo();
+
     $NewState->{WPAInfo}{Password} = $WPAInfo->{Password} // ""
         if $NewState->{WPAInfo}{Password} eq $BlankPW;
 
