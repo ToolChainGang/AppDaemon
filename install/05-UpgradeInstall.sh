@@ -115,6 +115,13 @@ apt-get -y install samba samba-common-bin smbclient
 apt-get -y install dnsmasq hostapd
 apt-get -y autoremove
 
+#
+# Upgrade WiringPi, in case RasPi v4
+#
+cd /tmp
+wget https://project-downloads.drogon.net/wiringpi-latest.deb
+sudo dpkg -i wiringpi-latest.deb
+
 echo "Done."
 echo
 
