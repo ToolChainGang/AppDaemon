@@ -551,10 +551,10 @@
         //
         // Sharing
         //
-        if( document.getElementById("SB") != undefined &&
-            document.getElementById("SB").style.display != "none" ) {
+        if( document.getElementById("SB") != undefined ) {
             TableText = UnchangedText;
-            if( Config.FSInfo.Workgroup != OrigConfig.FSInfo.Workgroup ) {
+            if( Config.FSInfo.Workgroup != OrigConfig.FSInfo.Workgroup &&
+                Config.FSInfo.Workgroup != "" ) {
                 TableText = Config.FSInfo.Workgroup;
                 }
             AddReviewLine("Workgroup: ",TableText);
