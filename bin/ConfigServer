@@ -287,8 +287,25 @@ sub SetupIWList {
             next
                 if $Wifi->{SSID} eq "--none--";
 
-            next
-                if grep { $_->{SSID} eq $Wifi->{SSID} } @{$SSIDList};
+            #
+            # See if there's an existing entry with the same SSID
+            #
+            my $i;
+            for( $i = 0; $i < @{$SSIDList}; $i++ ) {
+                last
+                    if $SSIDList->[$i]->{SSID} eq $Wifi->{SSID};
+                }
+
+            #
+            # If there's an existing entry with the same SSID, take the one with the highest signal
+            #
+            if( $i < @{$SSIDList} ) {
+
+                $SSIDList->[$i] = $Wifi
+                    if $SSIDList->[$i]->{QualityPct} < $Wifi->{QualityPct};
+
+                next;
+                }
 
             push @{$SSIDList},$Wifi;
             }
