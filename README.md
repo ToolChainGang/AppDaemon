@@ -12,14 +12,15 @@ Specifically, if you have a product with an embedded RasPi, how does the user:
 - Disable Wifi and use ethernet?
 - Choose a name for their system?
 
+Attaching a display and keyboard is a bother, and end users
+might not have a spare display and keyboard laying around.
+
+This project supplies a way for the end-user to easily configure a RasPi system.
+
 	</td>
 	<td><img style="float: right; margin: 0px 0px 10px 10px;" class="lazy" src="https://cdn.hackaday.io/images/1857511605398555259.png">
 	</td>
 </tr></tbody></table>
-
-Attaching a display and keyboard is a bother, and end users might not have a spare display and keyboard laying around.
-
-This project supplies a way for the end-user to easily configure a RasPi system.
 
 ## How it works
 
