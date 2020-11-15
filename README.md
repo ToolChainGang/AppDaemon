@@ -2,7 +2,7 @@
 
 <table>
 <tbody>
-<tr><td style="width: 50%">&nbsp;</td><td style="width: 50%">&nbsp;</td></tr>
+<tr><td style="width: 50%"></td><td style="width: 50%"></td></tr>
 <tr><td>
 How does an end-user configure a RasPi product?
 
@@ -19,7 +19,7 @@ might not have a spare display and keyboard laying around.
 This project supplies a way for the end-user to easily configure a RasPi system.
 
 </td><td>
-<img style="float: right; margin: 0px 0px 10px 10px;" src="https://cdn.hackaday.io/images/1857511605398555259.png">
+<img style="float: right; margin: 0px 0px 10px 10px;" src="https://cdn.hackaday.io/images/1376521605470259149.png">
 </td></tr></tbody></table>
 
 ## How it works
