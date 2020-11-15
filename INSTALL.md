@@ -4,7 +4,7 @@
 
 This is an application-level program, not a system command or system feature. It is an add-on to your
 product software, and as such there is no global "apt-get install". You will need a copy of the source
-to modify it to your needs.
+to modify for your needs.
 
 ### Step 1: Copy the project to the /root directory.
 
@@ -45,20 +45,23 @@ Verify that the output contains nothing but a list of "newest version" messages.
 
 ### Step 3: Test your GPIO hardware
 
-The install dir contains an app to test the GPIO settings in the system. It uses the same logic
-as the AppDaemon, but doesn't mess with the network interfaces or make any system changes.
+The install directory contains a GPIO testing app using the same logic as the AppDaemon.
 
-Execute that app with your GPIO settings and verify that the config button works, the LED blinks,
-and so on.
+Execute that app with your GPIO settings and verify that the config button hardware works,
+your LED blinks (if you use a config LED), and so on.
 
-> GPIOTest --config-gpio=22 --led-gpio=21 
+For example:
+
+```
+> GPIOTest --config-gpio=4 --led-gpio=19
+```
 
 ### Step 4: Install the test application
 
-The install dir contains a sample application (SampleApp) that can be used to test the system.
+The install directory contains a sample application (SampleApp) for testing.
 
-Copy that app to the /home/pi directory, then add a line to your /etc/rc.local file that invokes
-the AppDaemon with that file.
+Copy that app to the /home/pi directory, change the owner to pi:pi, then add a line to your
+/etc/rc.local file that invokes the AppDaemon with that file.
 
 For example, put this in your /etc/rc.local file:
 
@@ -69,8 +72,8 @@ For example, put this in your /etc/rc.local file:
 #
 set +e
 
-ConfigGPIO = 22;        # Config switch GPIO22, Connector pin 15, GPIO (command) BCM 22
-LEDGPIO    = 21;        # Config LED    GPIO21, Connector pin 40, GPIO (command) BCM 21
+ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
+LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
 
 #nohup /root/AppDaemon/bin/AppDaemon   --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
 nohup /root/AppDaemon/bin/AppDaemon -v --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
@@ -96,5 +99,3 @@ A sample rc.local file that does this is included with the project, so for a qui
 Once everything is running the /root/AppDaemon/install directory is no longer needed - you can delete it.
 
 Change the link in rc.local to run your application instead of the SampleApp, and you're good to go.
-
-

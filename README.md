@@ -1,5 +1,8 @@
 # AppDaemon: Easy end-user configuration for RasPi systems
 
+<table>
+<tbody>
+<tr><td style="width: 50%">
 How does an end-user configure a RasPi product?
 
 Specifically, if you have a product with an embedded RasPi, how does the user:
@@ -8,6 +11,11 @@ Specifically, if you have a product with an embedded RasPi, how does the user:
 - Set a fixed IP address?
 - Disable Wifi and use ethernet?
 - Choose a name for their system?
+
+	</td>
+	<td><img style="float: right; margin: 0px 0px 10px 10px;" class="lazy" src="https://cdn.hackaday.io/images/1857511605398555259.png">
+	</td>
+</tr></tbody></table>
 
 Attaching a display and keyboard is a bother, and end users might not have a spare display and keyboard laying around.
 
