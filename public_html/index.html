@@ -61,22 +61,25 @@
     </div>
 
 <div id="SysNamePage" class="PageDiv">
-    <table class="TOCColumns" summary="About system">
-        <tr><td style="width: 10%">&nbsp;</td><td><h1>Current name: <span class="SysName"></span></h1></td></tr>
+    <table class="TOCColumns" summary="System name">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>Current name: <span class="SysName"></span></h1></td><td>&nbsp;</td></tr>
         </table>
 
-    <center>
-        <h1>Enter new system name:</h1>
-        <input id="SysName" class="SysName" name="SysName" onKeyPress="EnterSysName(event)" \>
-        </center>
-    <center>
-        <br />
-        Valid names use a-z, A-Z, 0-9, hyphen and<br />underscore, and cannot begin or end with a hyphen.
-        </center>
-    <center>
-        <br />
-        A new name will take effect after reboot.
-        </center>
+    <table class="TOCColumns" summary="System name">
+        <tr><td style="width: 20%">&nbsp;</td><td>
+            <h1>Enter new system name:</h1><input id="SysName" class="SysName" name="SysName" onKeyPress="EnterSysName(event)" \>
+            </td><td></td></tr>
+        <tr><td style="width: 20%">&nbsp;</td></tr>
+        <tr><td style="width: 20%">&nbsp;</td><td>
+            Valid names use a-z, A-Z, 0-9, hyphen and underscore,<br /> and cannot begin or end with a hyphen.
+            </td><td></td></tr>
+        <tr><td style="width: 20%">&nbsp;</td></tr>
+        <tr><td style="width: 20%">&nbsp;</td><td>
+            Changes will take effect after reboot.
+            </td><td></td></tr>
+        <tr><td style="width: 20%">&nbsp;</td></tr>
+        </table>
+
     <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
         <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick="ChangeSysName()"     /></td><td><h2>Back</h2></td></tr>
@@ -102,10 +105,13 @@
         <tr><td style="width: 10%">&nbsp;</td><td><h1>Current workgroup: <span class="WorkgroupText" id="CurrentWorkgroup"></span></h1></td></tr>
         </table>
 
-    <center>
-        <h1>Enter new workgroup name:</h1>
-        <input id="WGName" class="WGName" name="WorkgroupName" onKeyPress="EnterWGName(event)" \>
-        </center>
+    <table class="TOCColumns" summary="System name">
+        <tr><td style="width: 20%">&nbsp;</td><td>
+            <h1>Enter new workgroup name:</h1>
+            <input id="WGName" class="WGName" name="WorkgroupName" onKeyPress="EnterWGName(event)" \>
+            </td><td></td></tr>
+        <tr><td style="width: 20%">&nbsp;</td></tr>
+        </table>
 
     <table class="NavTable">
         <tr><td>&nbsp;</td></tr>
