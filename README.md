@@ -2,7 +2,8 @@
 
 <table>
 <tbody>
-<tr><td style="width: 50%">
+<tr><td style="width: 50%">&nbsp;</td><td style="width: 50%">&nbsp;</td></tr>
+<tr><td>
 How does an end-user configure a RasPi product?
 
 Specifically, if you have a product with an embedded RasPi, how does the user:
@@ -17,21 +18,25 @@ might not have a spare display and keyboard laying around.
 
 This project supplies a way for the end-user to easily configure a RasPi system.
 
-</td>
-<td><img style="float: right; margin: 0px 0px 10px 10px;" class="lazy" src="https://cdn.hackaday.io/images/1857511605398555259.png">
-</td>
-</tr></tbody></table>
+</td><td>
+<img style="float: right; margin: 0px 0px 10px 10px;" src="https://cdn.hackaday.io/images/1857511605398555259.png">
+</td></tr></tbody></table>
 
 ## How it works
 
-The AppDaemon runs your application (your product software) at system boot. If your application crashes or hangs,
+The AppDaemon runs your application (your product software)
+at system boot. If your application crashes or hangs,
 the daemon will automatically reboot the system.
 
-The "AppDaemon" application also monitors a GPIO button. When pressed, the system will stop running your application
-and switch to Access Point mode. It will broadcast an access point with the name of the system, when connected to
-that AP the user is presented with a configuration panel to set system parameters such as their home WiFi and password.
+The "AppDaemon" application also monitors a GPIO button.
+When pressed, the system will stop running your application
+and switch to Access Point mode. It will broadcast an access
+point with the name of the system, when connected to
+that AP the user is presented with a configuration panel to
+set system parameters such as their home WiFi and password.
 
-When the user saves the configuration, the system will reboot and continue your product application.
+When the user saves the configuration, the system will reboot
+and continue your product application.
 
 ## Monitoring the product application
 
