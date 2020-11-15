@@ -17,9 +17,9 @@ might not have a spare display and keyboard laying around.
 
 This project supplies a way for the end-user to easily configure a RasPi system.
 
-	</td>
-	<td><img style="float: right; margin: 0px 0px 10px 10px;" class="lazy" src="https://cdn.hackaday.io/images/1857511605398555259.png">
-	</td>
+</td>
+<td><img style="float: right; margin: 0px 0px 10px 10px;" class="lazy" src="https://cdn.hackaday.io/images/1857511605398555259.png">
+</td>
 </tr></tbody></table>
 
 ## How it works
