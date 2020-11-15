@@ -509,7 +509,7 @@
         Config.About.forEach(function (InfoLine) { 
             var FmtLine = InfoLine.replace(": ",":<b> ") + "</b>";
            
-            InfoLines.innerHTML += '<tr><td style="width: 20%">&nbsp;</td><td><pre class="AboutLines" >' + FmtLine + '</pre></td></tr>';
+            InfoLines.innerHTML += '<tr><td style="width: 10%">&nbsp;</td><td><pre class="AboutLines" >' + FmtLine + '</pre></td></tr>';
             });
         }
 
