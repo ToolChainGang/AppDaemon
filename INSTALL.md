@@ -33,11 +33,11 @@ Go get lunch, then rerun the script
 
 Verify that the output contains nothing but a list of "newest version" messages.
 
-> ./05-UpgradePerl.sh
+> ./06-UpgradePerl.sh
 
 Go get dinner, then rerun the script
 
-> ./05-UpgradePerl.sh
+> ./06-UpgradePerl.sh
 
 Verify that the output contains nothing but a list of "newest version" messages.
 
