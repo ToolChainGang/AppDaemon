@@ -111,8 +111,14 @@ set +e
 ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
 LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
 
-#nohup /root/AppDaemon/bin/AppDaemon   --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
-nohup /root/AppDaemon/bin/AppDaemon -v --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
+Verbose="-v"        # AppDaemon talky
+#Verbose=           # AppDaemon quiet
+
+NoReboot=""         # Yes reboot after config save
+#NoReboot="-r"      # No  reboot after config save (for easy debugging)
+
+nohup /root/AppDaemon/bin/AppDaemon $NoReboot $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
+                                                       --user=pi /home/pi/SampleApp &
 
 set -e
 
