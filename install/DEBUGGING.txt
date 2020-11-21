@@ -50,7 +50,7 @@
 #
 killall /usr/bin/perl
 cd /root/AppDaemon/public_html
-python2 -m HTTPServer 80               &
+python3 -m http.server 80     &
 /root/AppDaemon/bin/ConfigServer -r -v &
 
 #
