@@ -131,7 +131,7 @@
             if( ConfigData["Error"] != "No error." ) {
                 console.log("Error: "+ConfigData["Error"]);
                 console.log("Msg:   "+Event.data);
-                 alert("Error: " + ConfigData["Error"]);
+                alert("Error: " + ConfigData["Error"]);
                 return;
                 }
 
@@ -182,7 +182,7 @@
             // Unexpected messages
             //
             console.log(ConfigData);
-            alert(ConfigData["Type"] + " received");
+            alert(ConfigData["Type"] + " unexpected message received.");
             };
 
         ConfigSocket.onopen = function(Event) {
