@@ -33,7 +33,7 @@
 ##
 ##  USAGE
 ##
-##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --user=<user> App1 [App2 ... ]
+##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --web-dir=<dir> --user=<user> App1 [App2 ... ]
 ##
 ##      where:
 ##
@@ -46,6 +46,8 @@
 ##          --user=<user>           User to run applications as (ie - "pi" for raspberry pi default user)
 ##
 ##          App[n]                  Applications to run and monitor
+##
+##          --web-dir=<dir>         Spark a web server in this directory, in addition to any apps
 ##
 ##          -verbose                Print out things as they happen
 ##          -v
@@ -105,9 +107,9 @@ use Site::NetInfo;
 use Site::RasPiUtils;
 use Site::CommandLine;
 
-local $ENV{PATH} = "$ENV{PATH}:/root/AppDaemon/bin";
+our $InstallDir = "/root/AppDaemon";
 
-our $VERSION = 'AppDaemon2020-10-20';
+our $VERSION    = 'AppDaemon2020-10-20';
 
 ########################################################################################################################
 ########################################################################################################################
@@ -127,16 +129,18 @@ my $SSID      = `cat /etc/hostname | tr -d " \t\n\r"`;            # SSID is host
 
 my $APPUSER   = "pi";
 my $USERDIR   = "/home/$APPUSER";
-my $LOGDIR    = "/root/AppDaemon/logs";
+my $LOGDIR    = "$InstallDir/logs";
+my $WebDir    = "";
 
 my $HTTPPort = IAmRoot() ? 80 : 8000;
-my $WebCmd   = "python2 -m HTTPServer $HTTPPort";
-my $CfgCmd   = "/root/AppDaemon/bin/ConfigServer";
+my $WebCmd   = "python3 -m http.server $HTTPPort";
+my $CfgCmd   = "$InstallDir/bin/ConfigServer";
 my $APCmd    = "create_ap -n --redirect-to-localhost $Interface $SSID";
 my $EndAPCmd = "create_ap --stop $Interface";
 
 my $Switch;
 my $LED;
+my @Apps;
 
 my $Verbose = 0;
 
@@ -160,6 +164,8 @@ $| = 1;             # Flush output immediately
 ##
 ##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --user=<user> App1 [App2 ... ]
 ##
+##                     --web-dir=<dir>
+##
 ########################################################################################################################
 ########################################################################################################################
 
@@ -167,9 +173,8 @@ ParseCommandLine("SSID=s"        => \$SSID,
                  "config-gpio=i" => \$ConfigGPIO,
                  "led-gpio=i"    => \$LEDGPIO,
                  "user=s"        => \$APPUSER,
+                 "web-dir=s"     => \$WebDir,
                  "v|verbose"     => \$Verbose);
-
-my @Apps = @ARGV;
 
 $USERDIR = "/home/$APPUSER";
 
@@ -205,6 +210,27 @@ $SIG{USR1} = sub {
     $State        = CONNECTED;
     };
 
+#
+# Setup the user apps with appropriate sudo and logging.
+#
+foreach my $App (@ARGV) {
+    my $BaseApp = (split / /,$App)[0];
+    my ($BaseName,$Path,$Extension) = fileparse($BaseApp, qr/\.[^.]*/);
+    push @Apps,"sudo --user $APPUSER $App >$LOGDIR/logs/$BaseName.log 2>&1";
+    }
+
+#
+# If the WebDir is defined, add a new command to spark a web server at that location.
+#
+if( defined $WebDir and length($WebDir) ) {
+    die "Not a directory ($WebDir)"
+        unless -d $WebDir;
+
+    my $ServerCmd = "cd $WebDir && $WebCmd";
+
+    push @Apps,$ServerCmd;
+    }
+
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -213,7 +239,7 @@ $SIG{USR1} = sub {
 ########################################################################################################################
 ########################################################################################################################
 
-chdir("/root/AppDaemon/public_html");
+chdir("$InstallDir/public_html");
 
 #
 # Disable interfaces requested by user
@@ -413,14 +439,8 @@ sub StartUserApps {
     Message("Starting user commands")
         if $Verbose;
 
-    foreach my $App (@Apps) {
-        my ($BaseName,$Path,$Extension) = fileparse($App, qr/\.[^.]*/);
-
-        Message("    $App")
-            if $Verbose;
-
-        BackgroundCommand("sudo --user $APPUSER $App >$LOGDIR/logs/$BaseName.log 2>&1");
-        }
+    BackgroundCommand($_)
+        foreach @Apps;
     }
 
 
