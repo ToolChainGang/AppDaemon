@@ -41,8 +41,6 @@
 ##      EndBackgroundCommands()         # End all commands running in background
 ##
 ##      ErrorReboot($Msg)               # Print message and reboot system
-##      Message($Msg)                   # Print out a message to the user
-##      ConsoleMessage($Msg)            # Print out a message on the console
 ##
 ##  ISA
 ##
@@ -186,7 +184,7 @@ sub BackgroundCommand {
     #
     $BackgroundCommands{$PID} = $Command;
 
-    Message("BackgroundCommand $BackgroundCommands{$PID} (PID $PID)");
+    Message("BackgroundCommand: $BackgroundCommands{$PID} (PID=>$PID)");
 
     return $PID;
     }
