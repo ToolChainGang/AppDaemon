@@ -117,8 +117,8 @@ Verbose="-v"        # AppDaemon talky
 NoReboot=""         # Yes reboot after config save
 #NoReboot="-r"      # No  reboot after config save (for easy debugging)
 
-nohup /root/AppDaemon/bin/AppDaemon $NoReboot $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
-                                                       --user=pi /home/pi/SampleApp &
+nohup /root/AppDaemon/bin/AppDaemon $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
+                                             --web-dir /home/pi/GPIOServer/public_html      &
 
 set -e
 

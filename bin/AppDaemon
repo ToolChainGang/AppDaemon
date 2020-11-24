@@ -52,7 +52,7 @@
 ##          -verbose                Print out things as they happen
 ##          -v
 ##
-##          If ap-name is not given, will use the text in /etc/hostname. If this file is blank or
+##          If SSID is not given, will use the text in /etc/hostname. If this file is blank or
 ##            missing, will use the literal "RasPi"
 ##
 ##          If led-gpio is not given, will not attempt to blink anything when entering config mode.
