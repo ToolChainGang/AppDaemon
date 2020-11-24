@@ -214,9 +214,8 @@ you might need (index.css, index.js, favicon.ico), and these will be served on p
 with your application.
 
 This is a *simple* web server, based on the javascript html library, so it doesn't do
-sophisticated processing or security controls or .htaccess.
-
-If you need full website functionality, install and use Apache.
+sophisticated processing or security controls or .htaccess. If you need full website
+functionality, install and use Apache.
 
 But if you just need a simple page or two for your application, you can use the built-in one supplied with the AppDaemon.
 
