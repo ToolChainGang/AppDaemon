@@ -208,7 +208,7 @@ In Config.js, add code to receive the new data:
 ### Built-in web page server
 
 AppDarmon starts at system boot via command in /etc/rc.local. If you add the argument
-"WebDir=<some-directory>", the system will start a web server in that directory along
+"WebDir=&lt;some-directory&gt;", the system will start a web server in that directory along
 with your application. Place an index.html in that directory and whatever support files
 you might need (index.css, index.js, favicon.ico), and these will be served on port 80
 with your application.
