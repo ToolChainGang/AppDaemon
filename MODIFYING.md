@@ -1,20 +1,20 @@
 ## Overview
 
 The AppDaemon is meant to be integrated into your application. Once you get the AppDaemon running, 
-modify it to make it look like a part of your project.
+modify it to look like a part of your project.
 
 ## Changing the config page looks
 
-The single page "public_html/index.html" contains all the configuration pages. Feel free to insert your
-company logo, and make the config page branding closer to your own such as the page colors, font face
+The page "public_html/index.html" contains all the configuration pages. Feel free to add your
+company logo, and make the page branding closer to your own such as the colors, font face
 and so on.
 
 The accompanying Config.js and Config.css file are also relevant.
 
 ## Adding default config files
 
-The AppDaemon tries to edit configuration files with updated information entered by the user, but
-it is not intelligent.
+The AppDaemon tries to update the existing configuration files with information entered by the user,
+but it is not intelligent.
 
 If your product needs default configurations, either supply
 - No configuration block, or

@@ -1,11 +1,11 @@
 ########################################################################################################################
 #
 # The GPIOTest program (included in this directory) uses the same GPIO logic as the AppDaemon, but
-#   without any other actions (such as taking down the net interface).
+#   without other actions (such as taking down the net interface).
 #
 # Use it to verify your hardware settings before modifying /etc/rc.local
 #
-./GPIOTest --config-gpio=22 --led-gpio=21
+./GPIOTest --config-gpio=7 --led-gpio=24
 
 #
 # NOTE: The system uses the WiringPi numbering scheme for GPIOs!!!
@@ -54,15 +54,16 @@ python2 -m HTTPServer 80               &
 /root/AppDaemon/bin/ConfigServer -r -v &
 
 #
-# The "-r" option to the ConfigServer means it will not reboot after save
+# The "-r" option to the ConfigServer means it will not reboot after save, which is useful for
+#   debugging over ssh.
 #
 
 
 ########################################################################################################################
 #
-# The following command will periodically scan and print out AP ESSID's
+# The following command will periodically scan and print out AP SSID's
 #
-# Run this from a command prompt on your laptop to continuously scan for APs while
+# Run this from a command prompt on your laptop (linux) to continuously scan for APs while
 #   debugging the AppDaemon
 #
 watch -n5 "iwlist wlan0 scan | grep -i ESSID"

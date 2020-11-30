@@ -108,8 +108,8 @@ fi
 #
 set +e
 
-ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
-LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
+ConfigGPIO=7;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
+LEDGPIO=24;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
 
 Verbose="-v"        # AppDaemon talky
 #Verbose=           # AppDaemon quiet

@@ -66,17 +66,20 @@ Copy that app to the /home/pi directory, change the owner to pi:pi, then add a l
 For example, put this in your /etc/rc.local file:
 
 ```
-########################################################################################################################
+########################################################################################################################                                                         
 #
 # Start the AppDaemon
 #
 set +e
 
-ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
-LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
+ConfigGPIO=7;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
+LEDGPIO=24;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
 
-#nohup /root/AppDaemon/bin/AppDaemon   --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
-nohup /root/AppDaemon/bin/AppDaemon -v --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO --user=pi /home/pi/SampleApp &
+Verbose="-v"        # AppDaemon gets very talky
+#Verbose=           # AppDaemon shuts up
+
+nohup /root/AppDaemon/bin/AppDaemon $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
+                                             --user=pi /home/pi/SampleApp                   &
 
 set -e
 ```
