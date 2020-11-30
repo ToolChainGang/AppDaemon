@@ -204,3 +204,78 @@ In Config.js, add code to receive the new data:
         return;
         }
 </code></pre>
+
+### Built-in web page server
+
+AppDarmon starts at system boot via command in /etc/rc.local. If you add the argument
+"WebDir=&lt;some-directory&gt;", the system will start a web server in that directory along
+with your application. Place an index.html in that directory and whatever support files
+you might need (index.css, index.js, favicon.ico), and these will be served on port 80
+with your application.
+
+This is a *simple* web server, based on the javascript html library, so it doesn't do
+sophisticated processing or security controls or .htaccess. If you need full website
+functionality, install and use Apache.
+
+But if you just need a simple page or two for your application, you can use the built-in one supplied with the AppDaemon.
+
+Here's how you might modify rc.local to make use of this feature:
+
+<pre><code>
+
+ConfigGPIO=4;       # Config switch WPi07, Connector pin  7, GPIO (command) BCM 04
+LEDGPIO=19;         # Config LED    WPi24, Connector pin 35, GPIO (command) BCM 19
+
+Verbose="-v"        # AppDaemon gets very talky
+#Verbose=           # AppDaemon shuts up
+
+nohup /root/AppDaemon/bin/AppDaemon $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
+                                             --web-dir /home/pi/GPIOServer/public_html      \
+                                             --user=pi /home/pi/GPIOServer/bin/GPIOServer &
+
+</code></pre>
+
+And with that example, here are the files the application would need:
+
+<pre><code>
+
+/home/pi/GPIOServer/public_html: l
+favicon.ico  GPIOServer.css  GPIOServer.js  images  index.html  success.txt
+
+</code></pre>
+
+For reference, here's the full command line documentation for the AppDaemon:
+
+<pre><code>
+
+##  USAGE
+##
+##      AppDaemon [-v] --SSID=<name> --config-gpio=<gpio#> --led-gpio=<gpio#> --web-dir=<dir> --user=<user> App1 [App2 ... ]
+##
+##      where:
+##
+##          --SSID=name             Name to show when in access point mode
+##
+##          --config-gpio=#         GPIO of button to enter config mode
+##
+##          --led-gpio=#            GPIO of LED (to blink when in AP mode)
+##
+##          --user=<user>           User to run applications as (ie - "pi" for raspberry pi default user)
+##
+##          App[n]                  Applications to run and monitor
+##
+##          --web-dir=<dir>         Spark a web server in this directory, in addition to any apps
+##
+##          -verbose                Print out things as they happen
+##          -v
+##
+##          If SSID is not given, will use the text in /etc/hostname. If this file is blank or
+##            missing, will use the literal "RasPi"
+##
+##          If led-gpio is not given, will not attempt to blink anything when entering config mode.
+##
+##          If config-gpio is not given, will not enter config/ap mode.
+##
+##          If user is not given, will use "pi"
+
+</code></pre>
