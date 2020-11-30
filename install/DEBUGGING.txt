@@ -8,10 +8,12 @@
 ./GPIOTest --config-gpio=7 --led-gpio=24
 
 #
-# NOTE: The system uses the WiringPi numbering scheme for GPIOs!!!
+# The following table outlines the COMPLETELY CONFUSING numbering schemes used on
+#   the RasPi. Which system is used depends on your version of library, the model
+#   if Pi you're using, and probably the phase of the moon.
 #
-# The following table outlines the COMPLETELY FRUSTRATING numbering schemes used on
-#   the RasPi. Use the wPi column numbering for the command GPIO numbers.
+# Keep trying things until you figure out which numbering system is being used,
+#   and then stick with that. Try the BCM numbering scheme first.
 #
  +-----+-----+---------+------+---+---Pi 4B--+---+------+---------+-----+-----+
  | BCM | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | BCM |
