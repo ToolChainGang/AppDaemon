@@ -73,8 +73,8 @@ Unused=$(($DiskSize-$Part1Size-$Part2Size))
 
 ########################################################################################################################
 #
-# The SaveCard program will add an additional 20 MB for proper booting. If the resulting image
-#   has less than 500MB of free space, we assume that the disk hasn't been expanded.
+# The SaveCard program will add an additional 20 MB for proper booting. If the card with image has
+#   more than 500MB of free space, we assume that the disk hasn't been expanded.
 #
 if [ "$Unused" -gt 500000000 ]; then
     echo "============>Disk is not expanded. Expand the disk, reboot, and rerun this script."
