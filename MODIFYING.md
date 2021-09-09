@@ -230,8 +230,7 @@ Verbose="-v"        # AppDaemon gets very talky
 #Verbose=           # AppDaemon shuts up
 
 nohup /root/AppDaemon/bin/AppDaemon $Verbose --config-gpio=$ConfigGPIO --led-gpio=$LEDGPIO  \
-                                             --web-dir /home/pi/GPIOServer/public_html      \
-                                             --user=pi /home/pi/GPIOServer/bin/GPIOServer &
+                                             --user=pi /home/pi/SampleApp &
 
 </code></pre>
 
