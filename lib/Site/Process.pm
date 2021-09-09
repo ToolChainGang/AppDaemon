@@ -29,6 +29,16 @@
 ##        the logged-in user is working to improve the system (or wants to debug what went wrong). When all users
 ##        subsequently log out, the reboot then happens as normal.
 ##
+##      Note on previous: If the variable $USERS_ARE_SSH_USERS is set (see below), then only SSH users will prevent
+##        the system from rebooting. If this variable is missing or set to false, then *any* logged-in users will
+##        prevent the system from rebooting, including ones using the local display and KB.
+##
+##      So if your OS is set to automatically log in a local user, which is the default for the GUI version of
+##        Raspbian, the system will NEVER reboot if the app fails. If you are selling a product that automatically
+##        logs in the GUI user, you want to set $USERS_ARE_SSH_USERS below to allow the system to reboot if your
+##        application exits. If you are using the command-line OS, or if the GUI doesn't automatically log in
+##        a user, then don't set that variable.
+##
 ##  DATA
 ##
 ##      None.
@@ -117,6 +127,13 @@ $SIG{CHLD} = \&ChildExit;
 
 our $SysCommand;
 our $SysTimeout;
+
+#
+# If this next variable is set, only logged-in SSH users will prevent the ErrorReboot() from rebooting.
+#
+# If the variable is unset or missing, *any* logged in user will prevent the reboot.
+#
+our $USERS_ARE_SSH_USERS = 1;
 
 #######################################################################################################################
 ########################################################################################################################
@@ -283,7 +300,7 @@ sub ErrorReboot {
     Message("",1);
     Message("$ErrorMsg",1);
 
-    if( NumUsers() > 0 ) {
+    if( Users() > 0 ) {
         Message("No reboot, due to user login.",1);
         Message("",1);
         WatchUsers();
@@ -295,7 +312,7 @@ sub ErrorReboot {
 
     sleep(60);
 
-    if( NumUsers() > 0 ) {
+    if( Users() > 0 ) {
         Message("No reboot, due to user login.",1);
         Message("",1);
         WatchUsers();
@@ -325,8 +342,29 @@ sub WatchUsers {
         sleep 10;
 
         ErrorReboot("Reinstating reboot timer due to user logout.")
-            unless NumUsers();
+            unless Users();
         }
+    }
+
+
+########################################################################################################################
+########################################################################################################################
+##
+## Users - Return number of users in system
+##
+## Inputs:      None.
+##
+## Outputs:     Number of users
+##
+## NOTE: If $USERS_ARE_SSH_USERS, only the number of SSH users will be returned. Otherwise,
+##         the number of all users are returned.
+##
+sub Users {
+
+    return NumSSHUsers()
+        if defined $USERS_ARE_SSH_USERS and $USERS_ARE_SSH_USERS;
+
+    return NumUsers();
     }
 
 

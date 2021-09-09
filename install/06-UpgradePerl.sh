@@ -77,10 +77,10 @@ Unused=$(($DiskSize-$Part1Size-$Part2Size))
 #   has less than 500MB of free space, we assume that the disk hasn't been expanded.
 #
 if [ "$Unused" -gt 500000000 ]; then
-    echo "============>Disk is not expanded, automatically expanding with reboot..."
+    echo "============>Disk is not expanded. Expand the disk, reboot, and rerun this script."
     echo
-    raspi-config --expand-rootfs
-    reboot
+    echo "Expand command: raspi-config --expand-rootfs"
+    echo
     exit
     fi
 
