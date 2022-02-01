@@ -45,6 +45,23 @@
 
 ########################################################################################################################
 #
+# If you're having trouble with the deamon itself, you can run it directly without the nohup.
+#   As root, just type the command found in rc.local:
+#
+cd /root/bin
+killall /usr/bin/perl                                # Stop any demons already running
+AppDaemon -v  -r --config-gpio=5 --led-gpio=19 --user=pi /home/pi/SampleApp
+
+# The "-v" is verbose, and should print out useful messages as things happen, such as when you press the GPIO button
+# or the user saves changes.
+# 
+# The "-r" means do *not* reboot after the user makes changes and presses the reboot button on the web page.
+# 
+# This allows you to test the web interface then examine the saved config files without waiting for the reboot
+# and possibly changing the network config.
+
+########################################################################################################################
+#
 # The following commands will run the configuration process outright, without having to press the GPIO
 #   or take down the interfaces. This allows you to debug the config system over ssh.
 #
