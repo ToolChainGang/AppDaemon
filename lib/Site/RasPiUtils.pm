@@ -118,7 +118,7 @@ sub IAmRoot {
 ##
 ## Outputs:     Numer of logged in users
 ##
-sub NumUsers { return scalar split /\s/, `users`; }
+sub NumUsers { return (scalar split /\s/, `users`) || 0; }
 
 
 ########################################################################################################################
@@ -130,7 +130,7 @@ sub NumUsers { return scalar split /\s/, `users`; }
 ##
 ## Outputs:     Numer of SSH logged in users
 ##
-sub NumSSHUsers { return scalar `ss | grep -i ssh`; }
+sub NumSSHUsers { return (scalar `ss | grep -i ssh`) || 0; }
 
 
 ########################################################################################################################

@@ -135,8 +135,8 @@ my $WebDir    = "";
 my $HTTPPort = IAmRoot() ? 80 : 8000;
 my $WebCmd   = "python3 -m http.server $HTTPPort";
 my $CfgCmd   = "$InstallDir/bin/ConfigServer";
-my $APCmd    = "create_ap -n --redirect-to-localhost $Interface $SSID";
-my $EndAPCmd = "create_ap --stop $Interface";
+my $APCmd    = "$InstallDir/bin/create_ap -n --redirect-to-localhost $Interface $SSID";
+my $EndAPCmd = "$InstallDir/bin/create_ap --stop $Interface";
 
 my $Switch;
 my $LED;
