@@ -113,7 +113,7 @@ echo "Installing packages"
 
 apt-get -y install samba samba-common-bin smbclient
 apt-get -y install dnsmasq hostapd
-apt-get -y autoremove
+apt-get -y autoremove iptables
 
 #
 # Upgrade WiringPi, in case RasPi v4
